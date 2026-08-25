@@ -22,4 +22,3 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Middlewar
 ];
 
 export default config;
-

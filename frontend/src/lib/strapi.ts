@@ -22,4 +22,3 @@ export async function getBackendHealth() {
     return { status: "unavailable" as const };
   }
 }
-
