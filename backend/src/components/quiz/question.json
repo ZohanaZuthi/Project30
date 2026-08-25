@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_quiz_questions",
+  "info": {
+    "displayName": "Question",
+    "description": "An MCQ question with a server-only correct option"
+  },
+  "options": {},
+  "attributes": {
+    "prompt": {
+      "type": "text",
+      "required": true
+    },
+    "options": {
+      "type": "json",
+      "required": true
+    },
+    "correctOption": {
+      "type": "integer",
+      "required": true,
+      "min": 0,
+      "private": true
+    }
+  }
+}
+

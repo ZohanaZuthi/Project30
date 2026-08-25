@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lesson_progress_records",
+  "info": {
+    "singularName": "lesson-progress",
+    "pluralName": "lesson-progress-records",
+    "displayName": "Lesson Progress",
+    "description": "Persistent proof that one student completed one lesson"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "student": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "lesson": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::lesson.lesson",
+      "inversedBy": "progressRecords"
+    },
+    "completedAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "uniqueKey": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "private": true
+    }
+  }
+}
+
