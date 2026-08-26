@@ -26,8 +26,16 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   'users-permissions': {
     config: {
       jwtManagement: 'refresh',
+      register: {
+        allowedFields: [],
+      },
       sessions: {
-        httpOnly: true,
+        // Next.js is the browser-facing BFF and stores both tokens in
+        // first-party HttpOnly cookies. Strapi returns tokens to that server.
+        httpOnly: false,
+        accessTokenLifespan: 24 * 60 * 60,
+        maxSessionLifespan: 7 * 24 * 60 * 60,
+        idleSessionLifespan: 24 * 60 * 60,
       },
     },
   },
