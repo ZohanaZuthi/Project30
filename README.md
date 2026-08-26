@@ -3,7 +3,7 @@
 Project30 is a role-secured Learning Management System built as a Next.js
 frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
 
-## Completed so far (26 August 2026)
+## Completed so far (27 August 2026)
 
 - Next.js 16 App Router frontend in `frontend/`
 - Strapi 5 backend in `backend/`
@@ -20,6 +20,10 @@ frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
   enforcement in Strapi policies
 - Course draft/publish/create/edit/delete and ordered lesson create/edit/delete
   screens
+- Responsive Bangladesh-focused public home page, Strapi-backed course catalog,
+  course detail/curriculum pages, and privacy-enhanced lesson previews
+- Idempotent demo seed with four realistic courses, 17 lessons, four quizzes,
+  free-to-use Pexels photography, and public Bangla tutorial embeds
 - Complete Strapi APIs for enrollment, persistent progress, server-graded
   quizzes and attempt history, draft/published blogs, and Admin users/stats
 - Transactional course cleanup, strict request allow-lists, safe DTOs, and
@@ -48,10 +52,19 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+In a third terminal, load or refresh the realistic demo catalog. This command is
+safe to run more than once because it looks up each record before creating it:
+
+```bash
+npm run seed:demo
+```
+
 - Frontend: `http://localhost:3000`
 - Strapi admin: `http://localhost:1337/admin`
 - Backend health: `http://localhost:1337/api/health`
 - Combined frontend health: `http://localhost:3000/api/health`
+- Public course catalog: `http://localhost:3000/courses`
+- Third-party media credits: `http://localhost:3000/media-credits`
 
 Public registration creates a Student. To test a staff role before the LMS
 Admin role-management screen is implemented, open Strapi's Content Manager,
@@ -71,6 +84,8 @@ See [`docs/backend-implementation-guide.md`](docs/backend-implementation-guide.m
 for the endpoint-by-endpoint code tour, request flows, test strategy, security
 reasoning, and interview questions. The earlier authentication/course slice is
 documented in [`docs/day-02-auth-and-content.md`](docs/day-02-auth-and-content.md).
+The UI research, media choices, data flow, and likely frontend interview questions
+are documented in [`docs/frontend-experience-guide.md`](docs/frontend-experience-guide.md).
 
 The long-form implementation plan follows below.
 
