@@ -3,7 +3,7 @@
 Project30 is a role-secured Learning Management System built as a Next.js
 frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
 
-## Current foundation
+## Completed so far (26 August 2026)
 
 - Next.js 16 App Router frontend in `frontend/`
 - Strapi 5 backend in `backend/`
@@ -11,6 +11,16 @@ frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
 - Railway health/build configuration in `backend/railway.json`
 - Version-controlled course, lesson, enrollment, progress, quiz, attempt, and
   blog schemas
+- Reproducible Student, Instructor, Content Manager, and Admin application roles
+- Student-only public registration and refresh-token sessions behind a Next.js
+  `HttpOnly` cookie boundary
+- Authenticated role-aware dashboard and optimistic route protection
+- Public published-course read API
+- Admin/Content Manager platform-wide course access and Instructor ownership
+  enforcement in Strapi policies
+- Course draft/publish/create/edit/delete and ordered lesson create/edit/delete
+  screens
+- Backend unit tests covering positive and negative ownership decisions
 - Architecture, authorization, and deployment notes in `docs/`
 
 ## Run locally
@@ -37,6 +47,24 @@ npm run dev:frontend
 - Strapi admin: `http://localhost:1337/admin`
 - Backend health: `http://localhost:1337/api/health`
 - Combined frontend health: `http://localhost:3000/api/health`
+
+Public registration creates a Student. To test a staff role before the LMS
+Admin role-management screen is implemented, open Strapi's Content Manager,
+select a Users & Permissions user, and assign one of the application roles
+seeded at backend startup. The Strapi CMS administrator used for this setup is
+not the same account as an LMS application Admin.
+
+Verification commands:
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+See [`docs/day-02-auth-and-content.md`](docs/day-02-auth-and-content.md) for the
+code tour, request flows, security reasoning, and interview questions for this
+increment.
 
 The long-form implementation plan follows below.
 
