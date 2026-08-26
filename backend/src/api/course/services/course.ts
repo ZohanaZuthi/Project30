@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { factories } from '@strapi/strapi';
+import type { Modules } from '@strapi/types';
 import { errors } from '@strapi/utils';
 
 import {
@@ -71,11 +72,17 @@ function courseDto(course: CourseDocument) {
   };
 }
 
-const courseFields = ['title', 'slug', 'description', 'thumbnailUrl', 'publishedAt'];
+const courseFields = [
+  'title',
+  'slug',
+  'description',
+  'thumbnailUrl',
+  'publishedAt',
+] satisfies Modules.Documents.Params.Fields.ArrayNotation<'api::course.course'>;
 const coursePopulate = {
   instructor: { fields: ['documentId', 'username'] },
   lessons: { fields: ['documentId', 'title', 'position'], sort: ['position:asc'] },
-};
+} satisfies Modules.Documents.Params.Populate.ObjectNotation<'api::course.course'>;
 
 export default factories.createCoreService('api::course.course', ({ strapi }) => {
   async function findManagedOne(documentId: string) {

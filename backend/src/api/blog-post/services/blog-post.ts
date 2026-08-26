@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { factories } from '@strapi/strapi';
+import type { Modules } from '@strapi/types';
 import { errors } from '@strapi/utils';
 import type { z } from 'zod';
 
@@ -24,8 +25,16 @@ type BlogDocument = {
 };
 
 const { NotFoundError, ValidationError } = errors;
-const fields = ['title', 'slug', 'body', 'coverImageUrl', 'publishedAt'];
-const populate = { author: { fields: ['documentId', 'username'] } };
+const fields = [
+  'title',
+  'slug',
+  'body',
+  'coverImageUrl',
+  'publishedAt',
+] satisfies Modules.Documents.Params.Fields.ArrayNotation<'api::blog-post.blog-post'>;
+const populate = {
+  author: { fields: ['documentId', 'username'] },
+} satisfies Modules.Documents.Params.Populate.ObjectNotation<'api::blog-post.blog-post'>;
 
 function slugify(title: string) {
   const base = title
