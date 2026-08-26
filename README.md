@@ -44,19 +44,19 @@ npm --prefix backend install
 npm --prefix frontend install
 ```
 
-Replace the placeholder Strapi secrets in `backend/.env`, then run the apps in
-separate terminals:
+Replace the placeholder Strapi secrets in `backend/.env`, then seed the catalog
+before starting Strapi. The seed command builds the backend first and is safe to
+run more than once because it looks up each record before creating it:
+
+```bash
+npm run seed:demo
+```
+
+Then run the apps in separate terminals:
 
 ```bash
 npm run dev:backend
 npm run dev:frontend
-```
-
-In a third terminal, load or refresh the realistic demo catalog. This command is
-safe to run more than once because it looks up each record before creating it:
-
-```bash
-npm run seed:demo
 ```
 
 - Frontend: `http://localhost:3000`

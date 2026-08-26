@@ -64,17 +64,18 @@ provider API and preserve attribution when its licence requires it.
 
 ## Demo seed
 
-Run:
+Run this while the normal Strapi development server is stopped:
 
 ```bash
 npm run seed:demo
 ```
 
-The root command delegates to `backend/scripts/seed-demo.js`. The script boots
-Strapi programmatically, checks stable course slugs and lesson positions, creates
-only missing records, publishes the courses, then shuts Strapi down cleanly. It
-is idempotent: running it twice still leaves four courses, 17 lessons, and four
-quizzes rather than duplicating the catalog.
+The root command first creates a fresh backend build and then delegates to
+`backend/scripts/seed-demo.js`. The script boots Strapi programmatically, checks
+stable course slugs and lesson positions, creates only missing records, publishes
+the courses, then shuts Strapi down cleanly. It is idempotent: running it twice
+still leaves four courses, 17 lessons, and four quizzes rather than duplicating
+the catalog.
 
 This is preferable to manually clicking demo data into the CMS because a reviewer
 or a fresh Railway database can reproduce the same state. The normal backend
