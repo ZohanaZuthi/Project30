@@ -20,7 +20,7 @@ export function DashboardShell({
       <header className="app-header">
         <Link className="brand" href="/">
           <span className="brand-mark">P30</span>
-          <span>Project30 LMS</span>
+          <span>Project30 Academy</span>
         </Link>
         <nav aria-label="Dashboard navigation">
           <Link href="/dashboard">Dashboard</Link>

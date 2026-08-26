@@ -34,11 +34,12 @@ export default async function DashboardPage() {
             <strong>Open course manager →</strong>
           </Link>
         ) : (
-          <article className="dashboard-card featured">
+          <Link className="dashboard-card featured" href="/courses">
             <span>Learning</span>
-            <h2>Course enrollment arrives next</h2>
-            <p>Today’s secure account and role foundation is ready for the student flow.</p>
-          </article>
+            <h2>Explore available courses</h2>
+            <p>Browse practical courses, preview the curriculum, and choose what to learn next.</p>
+            <strong>Browse courses →</strong>
+          </Link>
         )}
         <article className="dashboard-card">
           <span>Security boundary</span>

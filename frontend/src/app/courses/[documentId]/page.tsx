@@ -1,0 +1,37 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { SiteFooter } from "@/components/marketing/site-footer";
+import { SiteHeader } from "@/components/marketing/site-header";
+import { getCoursePresentation } from "@/lib/course-presentation";
+import { getPublishedCourse } from "@/lib/dal/public-courses";
+
+export async function generateMetadata({ params }: PageProps<"/courses/[documentId]">): Promise<Metadata> {
+  const { documentId } = await params;
+  const course = await getPublishedCourse(documentId);
+  return { title: course?.title ?? "Course" };
+}
+
+export default async function CourseDetailPage({ params }: PageProps<"/courses/[documentId]">) {
+  const { documentId } = await params;
+  const course = await getPublishedCourse(documentId);
+  if (!course) notFound();
+  const view = getCoursePresentation(course);
+
+  return (
+    <main className="marketing-page">
+      <SiteHeader />
+      <section className="course-detail-hero">
+        <div className="course-detail-copy"><Link href="/courses">← সব কোর্স</Link><span className="course-detail-category">{view.category}</span><h1>{course.title}</h1><p>{course.description}</p><div className="detail-rating"><strong>★ {view.rating}</strong><span>{view.learners} learners</span><span>{course.lessons.length} lessons</span><span>{view.duration}</span></div><div className="detail-mentor"><i>P30</i><div><small>Course instructor</small><strong>{course.instructor?.username ?? "Project30 Mentor Team"}</strong></div></div></div>
+        <aside className="enrollment-card"><div className="enrollment-image"><Image src={view.image} alt={`${course.title} course cover`} fill priority sizes="(max-width: 900px) 100vw, 38vw" /><span>▶ Preview</span></div><div className="enrollment-body"><small>Full course access</small><div className="enrollment-price">Free <del>৳2,500</del></div><ul><li>✓ {course.lessons.length} structured lessons</li><li>✓ Auto-graded course quiz</li><li>✓ Persistent progress tracking</li><li>✓ Learn on any device</li></ul><Link href="/register">Enroll free →</Link><p>No payment required for this demo.</p></div></aside>
+      </section>
+      <section className="course-detail-content">
+        <div className="curriculum-panel"><span className="section-kicker">Course curriculum</span><h2>যা যা শিখবেন</h2><ol>{course.lessons.map((lesson, index) => <li key={lesson.documentId}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{lesson.title}</strong><small>{index === 0 ? "Video + lesson notes" : "Lesson notes + practice"}</small></div><b>{index === 0 ? "Preview" : "Locked"}</b></li>)}</ol></div>
+        <div className="detail-preview"><span className="section-kicker">Preview lesson</span><h2>শুরু করার আগে দেখে নিন</h2><div className="responsive-video"><iframe src={`https://www.youtube-nocookie.com/embed/${view.previewVideoId}?rel=0`} title={`${course.title} preview lesson`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></div>
+      </section>
+      <SiteFooter />
+    </main>
+  );
+}

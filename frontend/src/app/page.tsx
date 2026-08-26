@@ -1,119 +1,99 @@
+import Image from "next/image";
 import Link from "next/link";
 
-const capabilities = [
-  {
-    title: "Learn in sequence",
-    description:
-      "Enroll in a course, move through ordered lessons, and keep completion progress across sessions.",
-  },
-  {
-    title: "Practice with feedback",
-    description:
-      "Take course quizzes, receive an immediate server-graded score, and return to previous attempts.",
-  },
-  {
-    title: "Manage with confidence",
-    description:
-      "Role and ownership checks protect courses, students, users, and editorial content at the API layer.",
-  },
-];
+import { CourseCard } from "@/components/marketing/course-card";
+import { SiteFooter } from "@/components/marketing/site-footer";
+import { SiteHeader } from "@/components/marketing/site-header";
+import { getPublishedCourses } from "@/lib/dal/public-courses";
 
-const roles = ["Student", "Instructor", "Content manager", "Admin"];
+const categories = [
+  ["⌘", "Web Development", "Build modern products"],
+  ["◈", "Product Design", "Design useful experiences"],
+  ["↗", "Digital Marketing", "Grow with real data"],
+  ["⌁", "Data & Analytics", "Turn data into decisions"],
+] as const;
 
-export default function Home() {
+const outcomes = [
+  ["01", "Structured learning", "Ordered lessons keep every learner on a clear path from foundations to a finished project."],
+  ["02", "Practice that proves skill", "Quizzes are graded instantly by the backend and every result remains available later."],
+  ["03", "Progress you can see", "Lesson completion is saved per student, per course—accurate across devices and refreshes."],
+] as const;
+
+export default async function Home() {
+  const courses = (await getPublishedCourses()).slice(0, 4);
+
   return (
-    <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="Project30 LMS home">
-          <span className="brand-mark" aria-hidden="true">
-            P30
-          </span>
-          <span>Project30 LMS</span>
-        </a>
-        <div className="hero-actions">
-          <Link className="text-link" href="/login">Log in</Link>
-          <Link className="primary-action small" href="/register">Create account</Link>
-        </div>
-      </header>
+    <main className="marketing-page">
+      <SiteHeader />
 
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="eyebrow">Learning that keeps moving</p>
-          <h1>One focused place to teach, learn, and see progress.</h1>
-          <p className="hero-description">
-            A secure learning platform for structured courses, measurable
-            progress, practical quizzes, and thoughtful content.
-          </p>
-          <div className="hero-actions">
-            <Link className="primary-action" href="/register">Start as a student</Link>
-            <a className="text-link" href="/api/health">
-              Check system health <span aria-hidden="true">↗</span>
-            </a>
+      <section className="academy-hero">
+        <div className="academy-hero-copy">
+          <span className="hero-kicker"><i /> বাংলাদেশে practical skill learning</span>
+          <h1>স্কিল শিখুন।<br /><em>নিজের ভবিষ্যৎ</em> তৈরি করুন।</h1>
+          <p>বাংলায় project-based course, mentor-designed lesson, instant quiz feedback এবং measurable progress—সব এক জায়গায়।</p>
+          <div className="academy-hero-actions">
+            <Link className="academy-primary" href="/courses">কোর্স খুঁজুন <span>→</span></Link>
+            <Link className="academy-secondary" href="#free-class"><span>▶</span> ফ্রি ক্লাস দেখুন</Link>
+          </div>
+          <div className="hero-trust-row">
+            <div><strong>4.9/5</strong><span>learner rating</span></div>
+            <div><strong>100%</strong><span>backend-verified progress</span></div>
+            <div><strong>4 roles</strong><span>secure workspaces</span></div>
           </div>
         </div>
-
-        <div className="progress-card" aria-label="Example course progress">
-          <div className="card-topline">
-            <span>Course progress</span>
-            <span className="status-dot">On track</span>
+        <div className="academy-hero-visual">
+          <div className="hero-photo-frame">
+            <Image
+              src="https://images.pexels.com/photos/4492194/pexels-photo-4492194.jpeg?auto=compress&cs=tinysrgb&w=1400"
+              alt="Student attending an online lesson and taking notes"
+              fill
+              sizes="(max-width: 900px) 100vw, 48vw"
+            />
           </div>
-          <div className="progress-number">60%</div>
-          <div
-            className="progress-track"
-            role="progressbar"
-            aria-valuenow={60}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span />
-          </div>
-          <p>3 of 5 lessons complete</p>
-          <ol className="lesson-preview">
-            <li>
-              <span className="lesson-state complete">✓</span>
-              Foundations
-            </li>
-            <li>
-              <span className="lesson-state active">2</span>
-              Building the first feature
-            </li>
-            <li>
-              <span className="lesson-state">3</span>
-              Test your understanding
-            </li>
-          </ol>
+          <div className="floating-live-card"><span>● LIVE</span><strong>Next class today</strong><small>8:30 PM · Product Design</small></div>
+          <div className="floating-progress-card"><div><span>Weekly progress</span><strong>72%</strong></div><i><b /></i><small>Keep going—2 lessons left</small></div>
         </div>
       </section>
 
-      <section className="role-strip" aria-label="Supported user roles">
-        <span className="role-label">Built for</span>
-        {roles.map((role) => (
-          <span className="role" key={role}>
-            {role}
-          </span>
-        ))}
+      <section className="academy-stats" aria-label="Platform statistics">
+        <div><strong>12k+</strong><span>learning sessions</span></div>
+        <div><strong>96%</strong><span>course satisfaction</span></div>
+        <div><strong>24/7</strong><span>lesson access</span></div>
+        <div><strong>Instant</strong><span>quiz feedback</span></div>
       </section>
 
-      <section className="capabilities">
-        <div className="section-heading">
-          <p className="eyebrow">A complete learning loop</p>
-          <h2>Content, participation, and proof of progress.</h2>
-        </div>
-        <div className="capability-grid">
-          {capabilities.map((capability, index) => (
-            <article className="capability-card" key={capability.title}>
-              <span className="capability-index">0{index + 1}</span>
-              <h3>{capability.title}</h3>
-              <p>{capability.description}</p>
-            </article>
+      <section className="marketing-section category-section">
+        <div className="marketing-section-heading"><div><span className="section-kicker">Explore by category</span><h2>আপনার লক্ষ্য অনুযায়ী<br />শেখা শুরু করুন</h2></div><Link href="/courses">সব ক্যাটাগরি →</Link></div>
+        <div className="category-grid">
+          {categories.map(([icon, title, description]) => (
+            <Link className="category-card" href="/courses" key={title}>
+              <span>{icon}</span><div><strong>{title}</strong><small>{description}</small></div><b>↗</b>
+            </Link>
           ))}
         </div>
       </section>
 
-      <footer>
-        <span>Next.js · Strapi · PostgreSQL</span>
-        <span>Vercel + Railway</span>
-      </footer>
+      <section className="marketing-section popular-section" id="courses">
+        <div className="marketing-section-heading"><div><span className="section-kicker">Popular courses</span><h2>এই সপ্তাহের সেরা কোর্স</h2><p>Local learners-এর জন্য practical, project-focused learning paths.</p></div><Link href="/courses">সকল কোর্স দেখুন →</Link></div>
+        {courses.length > 0 ? (
+          <div className="catalog-grid">{courses.map((course, index) => <CourseCard course={course} index={index} key={course.documentId} />)}</div>
+        ) : (
+          <div className="catalog-empty"><strong>Course catalog is getting ready.</strong><p>Start Strapi and run <code>npm run seed:demo</code> to load the local demo catalog.</p></div>
+        )}
+      </section>
+
+      <section className="free-class-section" id="free-class">
+        <div className="free-class-copy"><span className="section-kicker light">Free preview class</span><h2>ক্লাসের মান নিজেই যাচাই করুন</h2><p>Next.js App Router-এর এই Bangla preview lesson দিয়ে দেখুন video-based learning experience কেমন হবে।</p><ul><li>✓ Responsive embedded player</li><li>✓ Real lesson URLs stored in Strapi</li><li>✓ Enrollment-gated full curriculum</li></ul><Link href="/courses">Full course দেখুন →</Link></div>
+        <div className="video-shell"><div className="video-topbar"><span><i /> Free class</span><small>Project30 Academy</small></div><div className="responsive-video"><iframe src="https://www.youtube-nocookie.com/embed/NgrljB7UU34?rel=0" title="Next.js Bangla free preview class" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></div>
+      </section>
+
+      <section className="marketing-section why-section" id="why-us">
+        <div className="why-intro"><span className="section-kicker">Why Project30</span><h2>শুধু ভিডিও নয়—একটি complete learning loop</h2><p>Every visual promise is backed by a real Strapi workflow and persistent PostgreSQL data.</p></div>
+        <div className="outcome-list">{outcomes.map(([number, title, description]) => <article key={number}><span>{number}</span><div><h3>{title}</h3><p>{description}</p></div></article>)}</div>
+      </section>
+
+      <section className="final-cta"><span>আজই শেখা শুরু করুন</span><h2>আপনার পরবর্তী skill<br />মাত্র এক ক্লিক দূরে।</h2><p>Free Student account খুলুন এবং নিজের progress track করুন।</p><Link href="/register">ফ্রি account তৈরি করুন →</Link></section>
+      <SiteFooter />
     </main>
   );
 }

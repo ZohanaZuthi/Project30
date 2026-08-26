@@ -12,7 +12,7 @@ export default function LoginPage() {
       <section className="auth-card">
         <Link className="brand" href="/">
           <span className="brand-mark">P30</span>
-          <span>Project30 LMS</span>
+          <span>Project30 Academy</span>
         </Link>
         <div className="auth-heading">
           <p className="eyebrow">Welcome back</p>
