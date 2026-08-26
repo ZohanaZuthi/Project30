@@ -20,7 +20,12 @@ frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
   enforcement in Strapi policies
 - Course draft/publish/create/edit/delete and ordered lesson create/edit/delete
   screens
-- Backend unit tests covering positive and negative ownership decisions
+- Complete Strapi APIs for enrollment, persistent progress, server-graded
+  quizzes and attempt history, draft/published blogs, and Admin users/stats
+- Transactional course cleanup, strict request allow-lists, safe DTOs, and
+  reproducible action permissions plus ownership/enrollment policies
+- 19 backend unit assertions and 10 real Strapi/Supertest API scenarios using an
+  isolated test database
 - Architecture, authorization, and deployment notes in `docs/`
 
 ## Run locally
@@ -62,9 +67,10 @@ npm run lint
 npm run build
 ```
 
-See [`docs/day-02-auth-and-content.md`](docs/day-02-auth-and-content.md) for the
-code tour, request flows, security reasoning, and interview questions for this
-increment.
+See [`docs/backend-implementation-guide.md`](docs/backend-implementation-guide.md)
+for the endpoint-by-endpoint code tour, request flows, test strategy, security
+reasoning, and interview questions. The earlier authentication/course slice is
+documented in [`docs/day-02-auth-and-content.md`](docs/day-02-auth-and-content.md).
 
 The long-form implementation plan follows below.
 

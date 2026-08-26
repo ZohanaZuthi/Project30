@@ -71,8 +71,8 @@ route -> authentication -> policy -> controller -> service -> database
 ```
 
 Policies answer whether the current user may act. Controllers translate HTTP
-input/output. Services contain reusable business rules. Tomorrow's RBAC work
-will replace unrestricted core mutations with ownership-aware custom paths.
+input/output. Services contain reusable business rules. Unrestricted generated
+domain mutations are replaced with ownership- and enrollment-aware custom paths.
 
 ## Main relationships
 
