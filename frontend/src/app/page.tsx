@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const capabilities = [
   {
     title: "Learn in sequence",
@@ -28,7 +30,10 @@ export default function Home() {
           </span>
           <span>Project30 LMS</span>
         </a>
-        <div className="header-note">Foundation ready · Day 1</div>
+        <div className="hero-actions">
+          <Link className="text-link" href="/login">Log in</Link>
+          <Link className="primary-action small" href="/register">Create account</Link>
+        </div>
       </header>
 
       <section className="hero" id="top">
@@ -40,7 +45,7 @@ export default function Home() {
             progress, practical quizzes, and thoughtful content.
           </p>
           <div className="hero-actions">
-            <span className="primary-action">Course catalog coming next</span>
+            <Link className="primary-action" href="/register">Start as a student</Link>
             <a className="text-link" href="/api/health">
               Check system health <span aria-hidden="true">↗</span>
             </a>

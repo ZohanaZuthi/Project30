@@ -2,13 +2,26 @@ import "server-only";
 
 const DEFAULT_STRAPI_URL = "http://localhost:1337";
 
-function getStrapiUrl() {
+export function getStrapiUrl() {
   return (process.env.STRAPI_URL ?? DEFAULT_STRAPI_URL).replace(/\/$/, "");
+}
+
+export async function strapiFetch(
+  path: `/api/${string}`,
+  init: RequestInit = {},
+) {
+  return fetch(`${getStrapiUrl()}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...init.headers,
+    },
+  });
 }
 
 export async function getBackendHealth() {
   try {
-    const response = await fetch(`${getStrapiUrl()}/api/health`, {
+    const response = await strapiFetch("/api/health", {
       cache: "no-store",
       signal: AbortSignal.timeout(3_000),
     });
