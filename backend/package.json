@@ -11,6 +11,7 @@
     "develop": "strapi develop",
     "start": "strapi start",
     "strapi": "strapi",
+    "seed:demo": "node scripts/seed-demo.js",
     "test": "npm run test:unit && npm run test:api",
     "test:unit": "jest --runInBand tests/unit",
     "test:api": "npm run build && jest --runInBand --forceExit --detectOpenHandles tests/api",
