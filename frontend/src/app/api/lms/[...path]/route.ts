@@ -41,7 +41,14 @@ async function forward(
       body,
       cache: "no-store",
     },
-  );
+  ).catch(() => null);
+
+  if (!upstream) {
+    return NextResponse.json(
+      { error: "The LMS backend is unavailable." },
+      { status: 503 },
+    );
+  }
 
   return new NextResponse(await upstream.text(), {
     status: upstream.status,

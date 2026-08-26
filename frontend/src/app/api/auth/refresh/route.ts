@@ -1,7 +1,10 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-import { rejectCrossOrigin } from "@/lib/auth/http";
+import {
+  backendUnavailableResponse,
+  rejectCrossOrigin,
+} from "@/lib/auth/http";
 import { REFRESH_COOKIE } from "@/lib/auth/constants";
 import {
   clearSessionCookies,
@@ -22,7 +25,9 @@ export async function POST(request: NextRequest) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
     cache: "no-store",
-  });
+  }).catch(() => null);
+
+  if (!upstream) return backendUnavailableResponse();
 
   if (!upstream.ok) {
     const response = NextResponse.json({ error: "Session expired." }, { status: 401 });

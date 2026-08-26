@@ -10,13 +10,20 @@ export async function strapiFetch(
   path: `/api/${string}`,
   init: RequestInit = {},
 ) {
-  return fetch(`${getStrapiUrl()}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...init.headers,
-    },
-  });
+  try {
+    return await fetch(`${getStrapiUrl()}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...init.headers,
+      },
+    });
+  } catch (error) {
+    throw new Error(
+      "Could not connect to Strapi. Verify STRAPI_URL and start the LMS backend.",
+      { cause: error },
+    );
+  }
 }
 
 export async function getBackendHealth() {

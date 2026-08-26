@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  backendUnavailableResponse,
   loginSchema,
   readUpstreamError,
   rejectCrossOrigin,
@@ -26,7 +27,9 @@ export async function POST(request: NextRequest) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(parsed.data),
     cache: "no-store",
-  });
+  }).catch(() => null);
+
+  if (!upstream) return backendUnavailableResponse();
 
   if (!upstream.ok) {
     return NextResponse.json(

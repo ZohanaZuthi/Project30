@@ -14,7 +14,28 @@ export const registerSchema = z.object({
 
 export function rejectCrossOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
+  if (!origin) return;
+
+  const requestHost =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+    request.headers.get("host");
+  const requestProtocol =
+    request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ??
+    request.nextUrl.protocol.replace(":", "");
+
+  try {
+    const originUrl = new URL(origin);
+    if (
+      !requestHost ||
+      originUrl.host !== requestHost ||
+      originUrl.protocol !== `${requestProtocol}:`
+    ) {
+      return NextResponse.json(
+        { error: "Invalid request origin." },
+        { status: 403 },
+      );
+    }
+  } catch {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
 }
@@ -33,4 +54,14 @@ export async function readUpstreamError(response: Response) {
 
 export function validationMessage(error: z.ZodError) {
   return error.issues[0]?.message ?? "Check the submitted fields.";
+}
+
+export function backendUnavailableResponse() {
+  return NextResponse.json(
+    {
+      error:
+        "The learning service is unavailable. Start the LMS Strapi backend and try again.",
+    },
+    { status: 503 },
+  );
 }
