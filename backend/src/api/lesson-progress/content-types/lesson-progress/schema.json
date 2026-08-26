@@ -15,13 +15,15 @@
     "student": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "plugin::users-permissions.user",
+      "required": true
     },
     "lesson": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::lesson.lesson",
-      "inversedBy": "progressRecords"
+      "inversedBy": "progressRecords",
+      "required": true
     },
     "completedAt": {
       "type": "datetime",

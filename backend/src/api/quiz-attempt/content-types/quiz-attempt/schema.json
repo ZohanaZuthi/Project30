@@ -15,13 +15,15 @@
     "student": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "plugin::users-permissions.user",
+      "required": true
     },
     "quiz": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::quiz.quiz",
-      "inversedBy": "attempts"
+      "inversedBy": "attempts",
+      "required": true
     },
     "answers": {
       "type": "json",

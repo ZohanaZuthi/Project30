@@ -13,7 +13,7 @@ type CourseService = {
   findManaged(user: ApplicationUser): Promise<unknown[]>;
   findManagedOne(documentId: string): Promise<unknown | null>;
   createManaged(user: ApplicationUser, input: unknown): Promise<unknown>;
-  updateManaged(documentId: string, input: unknown): Promise<unknown>;
+  updateManaged(documentId: string, input: unknown, user: ApplicationUser): Promise<unknown>;
   deleteManaged(documentId: string): Promise<unknown>;
 };
 
@@ -58,7 +58,11 @@ export default {
   async updateManaged(ctx: Context) {
     const input = parseBody(courseUpdateSchema, ctx.request.body);
     ctx.body = {
-      data: await service().updateManaged(ctx.params.courseDocumentId, input),
+      data: await service().updateManaged(
+        ctx.params.courseDocumentId,
+        input,
+        ctx.state.user as ApplicationUser
+      ),
     };
   },
 

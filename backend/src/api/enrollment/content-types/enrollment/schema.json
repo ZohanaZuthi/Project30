@@ -15,13 +15,15 @@
     "student": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "plugin::users-permissions.user",
+      "required": true
     },
     "course": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::course.course",
-      "inversedBy": "enrollments"
+      "inversedBy": "enrollments",
+      "required": true
     },
     "enrolledAt": {
       "type": "datetime",

@@ -11,6 +11,7 @@ type LessonService = {
   createForCourse(courseDocumentId: string, input: unknown): Promise<unknown>;
   updateManaged(documentId: string, input: unknown): Promise<unknown>;
   deleteManaged(documentId: string): Promise<unknown>;
+  findForStudent(courseDocumentId: string, lessonDocumentId: string): Promise<unknown>;
 };
 
 function service() {
@@ -45,6 +46,15 @@ export default {
   async deleteManaged(ctx: Context) {
     ctx.body = {
       data: await service().deleteManaged(ctx.params.lessonDocumentId),
+    };
+  },
+
+  async findForStudent(ctx: Context) {
+    ctx.body = {
+      data: await service().findForStudent(
+        ctx.params.courseDocumentId,
+        ctx.params.lessonDocumentId
+      ),
     };
   },
 };

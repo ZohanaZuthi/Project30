@@ -24,5 +24,11 @@ export default {
       handler: 'api::lesson.lesson.deleteManaged',
       config: { policies: ['global::can-manage-lesson'] },
     },
+    {
+      method: 'GET',
+      path: '/lms/my-courses/:courseDocumentId/lessons/:lessonDocumentId',
+      handler: 'api::lesson.lesson.findForStudent',
+      config: { policies: ['global::is-enrolled-in-course'] },
+    },
   ],
 };

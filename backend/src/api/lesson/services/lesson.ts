@@ -18,7 +18,7 @@ type LessonDocument = {
   position: number;
 };
 
-const { ValidationError } = errors;
+const { NotFoundError, ValidationError } = errors;
 
 function lessonDto(lesson: LessonDocument) {
   return {
@@ -81,5 +81,21 @@ export default factories.createCoreService('api::lesson.lesson', ({ strapi }) =>
   async deleteManaged(documentId: string) {
     await strapi.documents('api::lesson.lesson').delete({ documentId });
     return { documentId };
+  },
+
+  async findForStudent(courseDocumentId: string, lessonDocumentId: string) {
+    const lesson = (await strapi.db.query('api::lesson.lesson').findOne({
+      where: {
+        documentId: lessonDocumentId,
+        course: { documentId: courseDocumentId },
+      },
+      select: ['documentId', 'title', 'content', 'videoUrl', 'position'],
+    })) as LessonDocument | null;
+
+    if (!lesson) {
+      throw new NotFoundError('Lesson not found in this course.');
+    }
+
+    return lessonDto(lesson);
   },
 }));

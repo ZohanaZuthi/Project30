@@ -22,7 +22,8 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::course.course",
-      "inversedBy": "quizzes"
+      "inversedBy": "quizzes",
+      "required": true
     },
     "questions": {
       "type": "component",

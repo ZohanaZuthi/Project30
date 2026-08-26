@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { factories } from '@strapi/strapi';
+import { errors } from '@strapi/utils';
 
 import {
   APP_ROLES,
@@ -32,6 +33,8 @@ type CourseDocument = {
   instructor?: InstructorSummary;
   lessons?: Array<{ documentId: string; title: string; position: number }>;
 };
+
+const { ValidationError } = errors;
 
 function slugify(title: string) {
   const base = title
@@ -74,7 +77,46 @@ const coursePopulate = {
   lessons: { fields: ['documentId', 'title', 'position'], sort: ['position:asc'] },
 };
 
-export default factories.createCoreService('api::course.course', ({ strapi }) => ({
+export default factories.createCoreService('api::course.course', ({ strapi }) => {
+  async function findManagedOne(documentId: string) {
+    const course = await strapi.documents('api::course.course').findOne({
+      documentId,
+      status: 'draft',
+      fields: courseFields,
+      populate: coursePopulate,
+    });
+
+    return course ? courseDto(course as unknown as CourseDocument) : null;
+  }
+
+  async function resolveInstructor(
+    user: ApplicationUser,
+    instructorDocumentId?: string
+  ) {
+    if (getRoleType(user) === APP_ROLES.INSTRUCTOR) {
+      if (instructorDocumentId && instructorDocumentId !== user.documentId) {
+        throw new ValidationError('Instructors cannot assign a course to another user.');
+      }
+      if (!user.documentId) {
+        throw new ValidationError('The instructor account is invalid.');
+      }
+      return user.documentId;
+    }
+    if (!instructorDocumentId) return undefined;
+
+    const instructor = await strapi.db
+      .query('plugin::users-permissions.user')
+      .findOne({
+        where: { documentId: instructorDocumentId },
+        populate: { role: true },
+      });
+    if (!instructor || instructor.role?.type !== APP_ROLES.INSTRUCTOR) {
+      throw new ValidationError('The selected user must have the Instructor role.');
+    }
+    return instructorDocumentId;
+  }
+
+  return {
   async findPublished() {
     const courses = await strapi.documents('api::course.course').findMany({
       status: 'published',
@@ -111,52 +153,87 @@ export default factories.createCoreService('api::course.course', ({ strapi }) =>
   },
 
   async findManagedOne(documentId: string) {
-    const course = await strapi.documents('api::course.course').findOne({
-      documentId,
-      status: 'draft',
-      fields: courseFields,
-      populate: coursePopulate,
-    });
-
-    return course ? courseDto(course as unknown as CourseDocument) : null;
+    return findManagedOne(documentId);
   },
 
   async createManaged(user: ApplicationUser, input: CourseCreateInput) {
-    const { publish, ...fields } = input;
-    const relation =
-      getRoleType(user) === APP_ROLES.INSTRUCTOR && user.documentId
-        ? { instructor: user.documentId }
-        : {};
+    const { publish, instructorDocumentId, ...fields } = input;
+    const instructor = await resolveInstructor(user, instructorDocumentId);
     const course = await strapi.documents('api::course.course').create({
       status: publish ? 'published' : undefined,
       data: {
         ...fields,
         slug: slugify(fields.title),
-        ...relation,
+        ...(instructor ? { instructor } : {}),
       } as never,
     });
 
-    return this.findManagedOne(course.documentId);
+    return findManagedOne(course.documentId);
   },
 
-  async updateManaged(documentId: string, input: CourseUpdateInput) {
-    const { publish, ...fields } = input;
+  async updateManaged(
+    documentId: string,
+    input: CourseUpdateInput,
+    user: ApplicationUser
+  ) {
+    const { publish, instructorDocumentId, ...fields } = input;
+    const instructor =
+      instructorDocumentId
+        ? await resolveInstructor(user, instructorDocumentId)
+        : undefined;
 
     await strapi.documents('api::course.course').update({
       documentId,
       status: publish ? 'published' : undefined,
-      data: fields as never,
+      data: {
+        ...fields,
+        ...(instructor ? { instructor } : {}),
+      } as never,
     });
 
     if (publish === false) {
       await strapi.documents('api::course.course').unpublish({ documentId });
     }
 
-    return this.findManagedOne(documentId);
+    return findManagedOne(documentId);
   },
 
   async deleteManaged(documentId: string) {
-    await strapi.documents('api::course.course').delete({ documentId });
+    await strapi.db.transaction(async () => {
+      const quizzes = await strapi.db.query('api::quiz.quiz').findMany({
+        where: { course: { documentId } },
+        select: ['id'],
+      });
+      const quizIds = quizzes.map(({ id }) => id);
+      if (quizIds.length > 0) {
+        await strapi.db.query('api::quiz-attempt.quiz-attempt').deleteMany({
+          where: { quiz: { id: { $in: quizIds } } },
+        });
+        await strapi.db.query('api::quiz.quiz').deleteMany({
+          where: { id: { $in: quizIds } },
+        });
+      }
+
+      const lessons = await strapi.db.query('api::lesson.lesson').findMany({
+        where: { course: { documentId } },
+        select: ['id'],
+      });
+      const lessonIds = lessons.map(({ id }) => id);
+      if (lessonIds.length > 0) {
+        await strapi.db.query('api::lesson-progress.lesson-progress').deleteMany({
+          where: { lesson: { id: { $in: lessonIds } } },
+        });
+        await strapi.db.query('api::lesson.lesson').deleteMany({
+          where: { id: { $in: lessonIds } },
+        });
+      }
+
+      await strapi.db.query('api::enrollment.enrollment').deleteMany({
+        where: { course: { documentId } },
+      });
+      await strapi.documents('api::course.course').delete({ documentId });
+    });
     return { documentId };
   },
-}));
+  };
+});
