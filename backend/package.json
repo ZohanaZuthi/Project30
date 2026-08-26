@@ -11,7 +11,9 @@
     "develop": "strapi develop",
     "start": "strapi start",
     "strapi": "strapi",
-    "test": "vitest run",
+    "test": "npm run test:unit && npm run test:api",
+    "test:unit": "jest --runInBand tests/unit",
+    "test:api": "npm run build && jest --runInBand --forceExit --detectOpenHandles tests/api",
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
@@ -28,15 +30,33 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript": "^5",
-    "vitest": "^4.1.11"
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.4.2",
+    "sqlite3": "^6.0.1",
+    "supertest": "^7.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
   },
   "engines": {
     "node": ">=20.0.0 <=26.x.x",
     "npm": ">=6.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.tsx?$": "<rootDir>/tests/jest-transformer.js"
+    },
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/",
+      "/build/",
+      "/.tmp/",
+      "/.cache/"
+    ]
   },
   "strapi": {
     "uuid": "5969129b-8e94-4752-af6d-d0935e197ec1",
