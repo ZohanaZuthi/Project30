@@ -20,6 +20,16 @@ frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
   enforcement in Strapi policies
 - Course draft/publish/create/edit/delete and ordered lesson create/edit/delete
   screens
+- Complete Student journey: enroll, separate My Courses library, sequential
+  lessons, persistent progress, auto-graded quizzes, and attempt history
+- Instructor/Content Manager quiz CRUD plus student-progress views, restricted
+  to the courses each role is allowed to manage
+- Blog workspace with draft/publish/edit/delete controls and public
+  published-only list and article pages
+- Dedicated Admin dashboard with platform statistics, user role/status controls,
+  and access to every course and blog post
+- Responsive role-aware navigation, loading, empty, pending, success, and error
+  states across all workflows
 - Responsive Bangladesh-focused public home page, Strapi-backed course catalog,
   course detail/curriculum pages, and privacy-enhanced lesson previews
 - Idempotent demo seed with four realistic courses, 17 lessons, four quizzes,
@@ -52,6 +62,24 @@ run more than once because it looks up each record before creating it:
 npm run seed:demo
 ```
 
+For a repeatable four-role walkthrough, set one local-only password while
+seeding (minimum eight characters):
+
+```bash
+DEMO_USER_PASSWORD='choose-a-local-password' npm run seed:demo
+```
+
+This creates these application accounts, all using that password:
+
+| Email                        | LMS role        |
+| ---------------------------- | --------------- |
+| `student@project30.local`    | Student         |
+| `instructor@project30.local` | Instructor      |
+| `manager@project30.local`    | Content Manager |
+| `admin@project30.local`      | Admin           |
+
+Do not configure `DEMO_USER_PASSWORD` in a public or production environment.
+
 Then run the apps in separate terminals:
 
 ```bash
@@ -64,13 +92,16 @@ npm run dev:frontend
 - Backend health: `http://localhost:1337/api/health`
 - Combined frontend health: `http://localhost:3000/api/health`
 - Public course catalog: `http://localhost:3000/courses`
+- Student learning area: `http://localhost:3000/learn`
+- Published blog: `http://localhost:3000/blog`
+- LMS Admin dashboard: `http://localhost:3000/admin`
 - Third-party media credits: `http://localhost:3000/media-credits`
 
-Public registration creates a Student. To test a staff role before the LMS
-Admin role-management screen is implemented, open Strapi's Content Manager,
-select a Users & Permissions user, and assign one of the application roles
-seeded at backend startup. The Strapi CMS administrator used for this setup is
-not the same account as an LMS application Admin.
+Public registration always creates a Student. Use the LMS Admin screen to
+promote application users after the first Admin exists. For initial local setup,
+use the optional demo accounts above or assign the first application Admin from
+Strapi's Content Manager. The Strapi CMS administrator is a separate identity
+from an LMS application Admin.
 
 Verification commands:
 
@@ -86,6 +117,8 @@ reasoning, and interview questions. The earlier authentication/course slice is
 documented in [`docs/day-02-auth-and-content.md`](docs/day-02-auth-and-content.md).
 The UI research, media choices, data flow, and likely frontend interview questions
 are documented in [`docs/frontend-experience-guide.md`](docs/frontend-experience-guide.md).
+The exact four-role demonstration path, API calls, backend checks, and interview
+explanations are in [`docs/role-flow-walkthrough.md`](docs/role-flow-walkthrough.md).
 
 The long-form implementation plan follows below.
 
@@ -164,16 +197,16 @@ Your dedicated LMS admin dashboard must be built in Next.js. Do not present the 
 
 Keep the model small and relational.
 
-| Collection | Important fields |
-|---|---|
-| User | username, email, password, role |
-| Course | title, slug, description, thumbnailUrl, instructor, published |
-| Lesson | title, content, videoUrl, position, course |
-| Enrollment | student, course, enrolledAt, uniqueKey |
-| LessonProgress | student, lesson, completedAt, uniqueKey |
-| Quiz | title, course, questions |
-| QuizAttempt | student, quiz, answers, score, total, submittedAt |
-| BlogPost | title, slug, body, coverImageUrl, author, draft/published |
+| Collection     | Important fields                                              |
+| -------------- | ------------------------------------------------------------- |
+| User           | username, email, password, role                               |
+| Course         | title, slug, description, thumbnailUrl, instructor, published |
+| Lesson         | title, content, videoUrl, position, course                    |
+| Enrollment     | student, course, enrolledAt, uniqueKey                        |
+| LessonProgress | student, lesson, completedAt, uniqueKey                       |
+| Quiz           | title, course, questions                                      |
+| QuizAttempt    | student, quiz, answers, score, total, submittedAt             |
+| BlogPost       | title, slug, body, coverImageUrl, author, draft/published     |
 
 Relations:
 
@@ -281,15 +314,15 @@ Create centralized authorization helpers instead of scattering role comparisons 
 Conceptually:
 
 ```ts
-isAdmin(user)
-isContentManager(user)
-isInstructor(user)
-isStudent(user)
+isAdmin(user);
+isContentManager(user);
+isInstructor(user);
+isStudent(user);
 
-canManageAnyCourse(user)
-canManageCourse(user, course)
-canViewCourseProgress(user, course)
-canManageBlogPost(user, post)
+canManageAnyCourse(user);
+canManageCourse(user, course);
+canViewCourseProgress(user, course);
+canManageBlogPost(user, post);
 ```
 
 `canManageCourse` should mean:
@@ -390,9 +423,7 @@ Store individual lesson completions and calculate:
 
 ```ts
 percentage =
-  totalLessons === 0
-    ? 0
-    : Math.round((completedLessons / totalLessons) * 100);
+  totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
 ```
 
 A completion request should:
@@ -540,20 +571,20 @@ Do not spend significant time on animations, certificates, payments, chat, email
 
 ## 11. Knowledge to learn for each part
 
-| Part | Learn | You understand it when you can explain |
-|---|---|---|
-| HTTP | methods, headers, status codes, JSON | Why a forbidden update returns 403 |
-| Authentication | password login, JWT, cookies | How the JWT reaches Strapi |
-| Authorization | RBAC, ownership, IDOR | Why Instructor A cannot edit Instructor B’s course |
-| Database | relations and uniqueness | Why progress needs Student + Lesson |
-| Strapi content types | collections, components, relations | How Course and Lesson records are connected |
-| Strapi backend | routes, policies, controllers, services | Which layer checks permission and which calculates progress |
-| Strapi Document Service | find, create, update, delete | How records are loaded and persisted |
-| Next.js App Router | layouts, pages, dynamic routes | How `/learn/[courseId]/[lessonId]` works |
-| Server vs Client Components | execution location and serialization | Why the quiz form needs client state |
-| Security | input validation and information leakage | Why correct quiz answers never reach the browser |
-| Deployment | environment variables, CORS, PostgreSQL | How Vercel securely reaches Railway |
-| Testing | positive and negative authorization cases | How you prove a Student cannot create a course |
+| Part                        | Learn                                     | You understand it when you can explain                      |
+| --------------------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| HTTP                        | methods, headers, status codes, JSON      | Why a forbidden update returns 403                          |
+| Authentication              | password login, JWT, cookies              | How the JWT reaches Strapi                                  |
+| Authorization               | RBAC, ownership, IDOR                     | Why Instructor A cannot edit Instructor B’s course          |
+| Database                    | relations and uniqueness                  | Why progress needs Student + Lesson                         |
+| Strapi content types        | collections, components, relations        | How Course and Lesson records are connected                 |
+| Strapi backend              | routes, policies, controllers, services   | Which layer checks permission and which calculates progress |
+| Strapi Document Service     | find, create, update, delete              | How records are loaded and persisted                        |
+| Next.js App Router          | layouts, pages, dynamic routes            | How `/learn/[courseId]/[lessonId]` works                    |
+| Server vs Client Components | execution location and serialization      | Why the quiz form needs client state                        |
+| Security                    | input validation and information leakage  | Why correct quiz answers never reach the browser            |
+| Deployment                  | environment variables, CORS, PostgreSQL   | How Vercel securely reaches Railway                         |
+| Testing                     | positive and negative authorization cases | How you prove a Student cannot create a course              |
 
 Use a learning loop for each feature:
 

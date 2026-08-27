@@ -70,6 +70,11 @@ Run this while the normal Strapi development server is stopped:
 npm run seed:demo
 ```
 
+To create the optional four-role walkthrough accounts as well, provide a
+local-only password with `DEMO_USER_PASSWORD='your-password' npm run seed:demo`.
+The seed uses Strapi's user service, so password hashing and model validation
+remain in Strapi rather than being reproduced in the script.
+
 The root command first creates a fresh backend build and then delegates to
 `backend/scripts/seed-demo.js`. The script boots Strapi programmatically, checks
 stable course slugs and lesson positions, creates only missing records, publishes
@@ -133,8 +138,8 @@ Enrollment, lesson access, progress, quiz submission, content management, and
 admin actions are still authorized by Strapi policies/controllers. Hidden UI is
 only a convenience; the backend is the security boundary.
 
-**What would you improve next?**
+**What would you improve after the project round?**
 
 Move display metadata into Strapi, upload optimized owned artwork through the
-media library, add catalog search/filtering with URL query parameters, make the
-enrollment CTA session-aware, and measure Core Web Vitals with production data.
+media library, add catalog search/filtering with URL query parameters, add email
+verification/password reset, and measure Core Web Vitals with production data.
