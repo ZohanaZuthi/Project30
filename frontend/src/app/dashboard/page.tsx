@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
+import { APP_ROLES, COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
 import { requireUser } from "@/lib/dal/auth";
 
 const roleCopy = {
@@ -14,6 +14,9 @@ const roleCopy = {
 export default async function DashboardPage() {
   const user = await requireUser();
   const canManage = COURSE_MANAGER_ROLES.includes(user.role.type);
+  const canManageBlogs =
+    user.role.type === APP_ROLES.ADMIN ||
+    user.role.type === APP_ROLES.CONTENT_MANAGER;
 
   return (
     <DashboardShell user={user}>
@@ -26,25 +29,56 @@ export default async function DashboardPage() {
         <span className="role-badge">{user.role.type.replace("_", " ")}</span>
       </section>
       <section className="dashboard-grid">
+        {user.role.type === APP_ROLES.ADMIN && (
+          <Link className="dashboard-card featured" href="/admin">
+            <span>Platform control</span>
+            <h2>Admin dashboard</h2>
+            <p>
+              Manage user roles, account access, platform content, and live
+              statistics.
+            </p>
+            <strong>Open administration →</strong>
+          </Link>
+        )}
         {canManage ? (
-          <Link className="dashboard-card featured" href="/manage/courses">
+          <Link
+            className={`dashboard-card ${user.role.type === APP_ROLES.ADMIN ? "" : "featured"}`}
+            href="/manage/courses"
+          >
             <span>Content library</span>
             <h2>Manage courses and lessons</h2>
-            <p>Create drafts, publish courses, and maintain ordered lesson content.</p>
+            <p>
+              Create drafts, publish courses, and maintain ordered lesson
+              content.
+            </p>
             <strong>Open course manager →</strong>
           </Link>
         ) : (
           <Link className="dashboard-card featured" href="/courses">
             <span>Learning</span>
             <h2>Explore available courses</h2>
-            <p>Browse practical courses, preview the curriculum, and choose what to learn next.</p>
+            <p>
+              Browse practical courses, preview the curriculum, and choose what
+              to learn next.
+            </p>
             <strong>Browse courses →</strong>
+          </Link>
+        )}
+        {canManageBlogs && (
+          <Link className="dashboard-card" href="/manage/blogs">
+            <span>Publication desk</span>
+            <h2>Write and publish blog posts</h2>
+            <p>Keep drafts private and publish when ready.</p>
+            <strong>Open blog manager →</strong>
           </Link>
         )}
         <article className="dashboard-card">
           <span>Security boundary</span>
           <h2>Role checked by Strapi</h2>
-          <p>The navigation reflects your role, but API policies make the final decision.</p>
+          <p>
+            The navigation reflects your role, but API policies make the final
+            decision.
+          </p>
         </article>
       </section>
     </DashboardShell>

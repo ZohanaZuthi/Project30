@@ -71,6 +71,19 @@ export function getSafeCourseImage(course: Course, index = 0) {
   return fallbackImages[index % fallbackImages.length];
 }
 
+export function getSafeBlogImage(value: string | null, index = 0) {
+  if (value) {
+    try {
+      const url = new URL(value);
+      if (url.protocol === "https:" && url.hostname === "images.pexels.com")
+        return value;
+    } catch {
+      // Invalid or untrusted cover URLs use an approved fallback.
+    }
+  }
+  return fallbackImages[(index + 1) % fallbackImages.length];
+}
+
 export function getCoursePresentation(course: Course, index = 0) {
   const defaultPresentation = {
     category: "Professional skills",

@@ -5,7 +5,14 @@ import { ACCESS_COOKIE } from "@/lib/auth/constants";
 import { rejectCrossOrigin } from "@/lib/auth/http";
 import { getStrapiUrl } from "@/lib/strapi";
 
-const allowedRoots = new Set(["courses", "manage"]);
+const allowedRoots = new Set([
+  "admin",
+  "blog-posts",
+  "courses",
+  "manage",
+  "my-courses",
+  "my-quiz-attempts",
+]);
 
 async function forward(
   request: NextRequest,
@@ -17,7 +24,10 @@ async function forward(
     !allowedRoots.has(path[0]) ||
     path.some((segment) => !segment || segment === "." || segment === "..")
   ) {
-    return NextResponse.json({ error: "Unsupported LMS path." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Unsupported LMS path." },
+      { status: 404 },
+    );
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {
@@ -52,11 +62,15 @@ async function forward(
 
   return new NextResponse(await upstream.text(), {
     status: upstream.status,
-    headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
+    headers: {
+      "Content-Type":
+        upstream.headers.get("content-type") ?? "application/json",
+    },
   });
 }
 
 export const GET = forward;
 export const POST = forward;
 export const PUT = forward;
+export const PATCH = forward;
 export const DELETE = forward;
