@@ -490,7 +490,6 @@ Project30/
 |   |-- src/utils/               validation, grading, locks, unique keys
 |   |-- scripts/seed-demo.js
 |   |-- tests/
-|   |-- railway.json
 |   `-- .env.example
 |-- docs/                        architecture, decisions, role and deployment guides
 |-- compose.yaml                 local PostgreSQL
@@ -657,15 +656,17 @@ Important negative cases covered include:
 1. Create a Railway project.
 2. Add a PostgreSQL service.
 3. Add the GitHub repository as another service.
-4. Set the Strapi service root directory to `backend`.
-5. Generate a public backend domain.
-6. Configure the variables documented in
+4. Set the Strapi service root directory to `/backend`.
+5. In the service dashboard set Build Command to `npm run build`, Start Command
+   to `npm run start`, and Healthcheck Path to `/api/health`.
+6. Generate a public backend domain.
+7. Configure the variables documented in
    [docs/deployment.md](docs/deployment.md).
-7. Verify `GET https://<backend-domain>/api/health`.
-8. Open `https://<backend-domain>/admin` and create the Strapi CMS Admin.
+8. Verify `GET https://<backend-domain>/api/health`.
+9. Open `https://<backend-domain>/admin` and create the Strapi CMS Admin.
 
-`backend/railway.json` defines the build, start, health, retry, and restart
-configuration.
+Railway dashboard settings are the deployment source of truth. The deprecated
+`railway.json`/`railway.toml` Config as Code format is intentionally not used.
 
 ### Vercel
 

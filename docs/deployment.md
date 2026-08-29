@@ -5,8 +5,25 @@
 Create one Railway project with:
 
 1. A PostgreSQL service named `Postgres`.
-2. A GitHub-backed Strapi service whose root directory is `backend`.
+2. A GitHub-backed Strapi service whose root directory is `/backend`.
 3. A generated public domain for the Strapi service.
+
+Configure the Strapi service in `Settings`:
+
+```text
+Root Directory: /backend
+Build Command: npm run build
+Start Command: npm run start
+Healthcheck Path: /api/health
+Healthcheck Timeout: 120 seconds
+Restart Policy: On Failure
+Serverless: Disabled
+```
+
+Leave the Railway Config File path empty. The deprecated
+`railway.json`/`railway.toml` Config as Code format is not used. Railway's newer
+project-level `.railway/railway.ts` IaC is optional and is unnecessary for this
+small manually provisioned assignment deployment.
 
 Set these Strapi service variables:
 
@@ -32,8 +49,8 @@ ENCRYPTION_KEY=<random value>
 ```
 
 Generate each secret locally with `openssl rand -base64 32`. Never commit the
-generated output. `backend/railway.json` declares the build, start, retry, and
-`/api/health` readiness configuration.
+generated output. The Railway service dashboard stores the build, start,
+restart, and `/api/health` readiness configuration.
 
 After the first deployment, open `<backend-domain>/admin` and create the Strapi
 CMS administrator. This account is separate from the LMS application Admin.
