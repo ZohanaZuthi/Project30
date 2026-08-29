@@ -33,6 +33,7 @@ type CourseDocument = {
   publishedAt?: string | null;
   instructor?: InstructorSummary;
   lessons?: Array<{ documentId: string; title: string; position: number }>;
+  quizzes?: Array<{ documentId: string; title: string; position: number }>;
 };
 
 type PublicationDocument = {
@@ -91,6 +92,11 @@ function courseDto(course: CourseDocument) {
         position: lesson.position,
       }))
       .sort((a, b) => a.position - b.position),
+    quizzes: (course.quizzes ?? []).map((quiz) => ({
+      documentId: quiz.documentId,
+      title: quiz.title,
+      position: quiz.position,
+    })).sort((a, b) => a.position - b.position),
   };
 }
 
@@ -104,6 +110,10 @@ const courseFields = [
 const coursePopulate = {
   instructor: { fields: ["documentId", "username"] },
   lessons: {
+    fields: ["documentId", "title", "position"],
+    sort: ["position:asc", "createdAt:asc"],
+  },
+  quizzes: {
     fields: ["documentId", "title", "position"],
     sort: ["position:asc", "createdAt:asc"],
   },

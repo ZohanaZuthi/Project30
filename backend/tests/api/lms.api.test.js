@@ -193,6 +193,8 @@ describe("LMS API integration", () => {
       .expect(200);
     expect(myCourses.body.data).toHaveLength(1);
     expect(myCourses.body.data[0].progress).toMatchObject({
+      totalSteps: 2,
+      completedSteps: 0,
       totalLessons: 2,
       completedLessons: 0,
       percentage: 0,
@@ -233,6 +235,8 @@ describe("LMS API integration", () => {
       .set(auth(studentToken))
       .expect(200);
     expect(first.body.data.progress).toMatchObject({
+      totalSteps: 2,
+      completedSteps: 1,
       totalLessons: 2,
       completedLessons: 1,
       percentage: 50,
@@ -249,6 +253,8 @@ describe("LMS API integration", () => {
       .set(auth(studentToken))
       .expect(200);
     expect(completion.body.data.progress).toMatchObject({
+      totalSteps: 2,
+      completedSteps: 2,
       totalLessons: 2,
       completedLessons: 2,
       percentage: 100,
@@ -278,6 +284,8 @@ describe("LMS API integration", () => {
       .set(auth(studentToken))
       .expect(200);
     expect(progress.body.data).toMatchObject({
+      totalSteps: 1,
+      completedSteps: 1,
       totalLessons: 1,
       completedLessons: 1,
       percentage: 100,
@@ -285,11 +293,36 @@ describe("LMS API integration", () => {
   });
 
   test("quiz answers stay private and grading rejects forged scores", async () => {
+    const finalLesson = (
+      await request(app)
+        .post(`/api/lms/manage/courses/${course.documentId}/lessons`)
+        .set(auth(instructorToken))
+        .send({
+          title: "Secure delivery",
+          content: "Apply the authorization rules in production.",
+          position: 3,
+        })
+        .expect(201)
+    ).body.data;
+
+    await request(app)
+      .post(`/api/lms/manage/courses/${course.documentId}/quizzes`)
+      .set(auth(instructorToken))
+      .send({
+        title: "Conflicting step",
+        position: 1,
+        questions: [
+          { prompt: "Will this save?", options: ["No", "Yes"], correctOption: 0 },
+        ],
+      })
+      .expect(400);
+
     const created = await request(app)
       .post(`/api/lms/manage/courses/${course.documentId}/quizzes`)
       .set(auth(instructorToken))
       .send({
         title: "Authorization quiz",
+        position: 2,
         questions: [
           {
             prompt: "Where must access be enforced?",
@@ -307,6 +340,52 @@ describe("LMS API integration", () => {
     quiz = created.body.data;
     expect(quiz.questions[0].correctOption).toBe(1);
 
+    await request(app)
+      .post(`/api/lms/manage/courses/${course.documentId}/lessons`)
+      .set(auth(instructorToken))
+      .send({
+        title: "Also conflicting",
+        content: "A lesson cannot occupy a quiz position.",
+        position: 2,
+      })
+      .expect(400);
+
+    const followUpQuiz = (
+      await request(app)
+        .post(`/api/lms/manage/courses/${course.documentId}/quizzes`)
+        .set(auth(instructorToken))
+        .send({
+          title: "Final knowledge check",
+          position: 4,
+          questions: [
+            {
+              prompt: "Which layer is the final authorization boundary?",
+              options: ["Frontend", "Backend"],
+              correctOption: 1,
+            },
+          ],
+        })
+        .expect(201)
+    ).body.data;
+
+    const studentQuizList = await request(app)
+      .get(`/api/lms/my-courses/${course.documentId}/quizzes`)
+      .set(auth(studentToken))
+      .expect(200);
+    expect(studentQuizList.body.data).toEqual([
+      expect.objectContaining({
+        documentId: quiz.documentId,
+        position: 2,
+        questionCount: 2,
+      }),
+      expect.objectContaining({
+        documentId: followUpQuiz.documentId,
+        position: 4,
+        questionCount: 1,
+      }),
+    ]);
+    expect(studentQuizList.body.data[0]).not.toHaveProperty("questions");
+
     const studentView = await request(app)
       .get(
         `/api/lms/my-courses/${course.documentId}/quizzes/${quiz.documentId}`,
@@ -317,6 +396,18 @@ describe("LMS API integration", () => {
     expect(studentView.body.data.questions[0]).not.toHaveProperty(
       "correctOption",
     );
+    await request(app)
+      .get(
+        `/api/lms/my-courses/${course.documentId}/lessons/${finalLesson.documentId}`,
+      )
+      .set(auth(studentToken))
+      .expect(403);
+    await request(app)
+      .get(
+        `/api/lms/my-courses/${course.documentId}/quizzes/${followUpQuiz.documentId}`,
+      )
+      .set(auth(studentToken))
+      .expect(403);
 
     await request(app)
       .post(
@@ -325,6 +416,16 @@ describe("LMS API integration", () => {
       .set(auth(studentToken))
       .send({ answers: [1, 1], score: 2 })
       .expect(400);
+
+    for (const answers of [[], [1], [1, 1, 0], [1, 99]]) {
+      await request(app)
+        .post(
+          `/api/lms/my-courses/${course.documentId}/quizzes/${quiz.documentId}/attempts`,
+        )
+        .set(auth(studentToken))
+        .send({ answers })
+        .expect(400);
+    }
 
     const attempt = await request(app)
       .post(
@@ -338,6 +439,65 @@ describe("LMS API integration", () => {
       total: 2,
       percentage: 50,
     });
+
+    await request(app)
+      .get(
+        `/api/lms/my-courses/${course.documentId}/quizzes/${followUpQuiz.documentId}`,
+      )
+      .set(auth(studentToken))
+      .expect(403);
+    await request(app)
+      .get(
+        `/api/lms/my-courses/${course.documentId}/lessons/${finalLesson.documentId}`,
+      )
+      .set(auth(studentToken))
+      .expect(200);
+    await request(app)
+      .put(
+        `/api/lms/my-courses/${course.documentId}/lessons/${finalLesson.documentId}/complete`,
+      )
+      .set(auth(studentToken))
+      .expect(200);
+
+    await request(app)
+      .get(
+        `/api/lms/my-courses/${course.documentId}/quizzes/${followUpQuiz.documentId}`,
+      )
+      .set(auth(studentToken))
+      .expect(200);
+    await request(app)
+      .post(
+        `/api/lms/my-courses/${course.documentId}/quizzes/${followUpQuiz.documentId}/attempts`,
+      )
+      .set(auth(studentToken))
+      .send({ answers: [1] })
+      .expect(201);
+
+    const progress = await request(app)
+      .get(`/api/lms/my-courses/${course.documentId}/progress`)
+      .set(auth(studentToken))
+      .expect(200);
+    expect(progress.body.data).toMatchObject({
+      totalSteps: 4,
+      completedSteps: 4,
+      totalLessons: 2,
+      completedLessons: 2,
+      totalQuizzes: 2,
+      completedQuizzes: 2,
+      percentage: 100,
+    });
+    expect(progress.body.data.steps.map(({ kind }) => kind)).toEqual([
+      "lesson",
+      "quiz",
+      "lesson",
+      "quiz",
+    ]);
+
+    const history = await request(app)
+      .get("/api/lms/my-quiz-attempts")
+      .set(auth(studentToken))
+      .expect(200);
+    expect(history.body.data).toHaveLength(2);
   });
 
   test("draft blog is private until its author publishes it", async () => {

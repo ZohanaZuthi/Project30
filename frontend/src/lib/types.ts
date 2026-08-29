@@ -32,22 +32,30 @@ export type Course = {
   publishedAt: string | null;
   instructor: { documentId?: string; username: string } | null;
   lessons: Array<Pick<Lesson, "documentId" | "title" | "position">>;
+  quizzes: Array<{ documentId: string; title: string; position: number }>;
 };
 
-export type ProgressLesson = Pick<
-  Lesson,
-  "documentId" | "title" | "position"
-> & {
+export type ProgressStep = Pick<Lesson, "documentId" | "title" | "position"> & {
+  kind: "lesson" | "quiz";
   completed: boolean;
   completedAt: string | null;
   locked: boolean;
 };
 
+export type ProgressLesson = ProgressStep & { kind: "lesson" };
+export type ProgressQuiz = ProgressStep & { kind: "quiz" };
+
 export type CourseProgress = {
+  totalSteps: number;
+  completedSteps: number;
   totalLessons: number;
   completedLessons: number;
+  totalQuizzes: number;
+  completedQuizzes: number;
   percentage: number;
+  steps: ProgressStep[];
   lessons?: ProgressLesson[];
+  quizzes?: ProgressQuiz[];
 };
 
 export type Enrollment = {
@@ -71,6 +79,7 @@ export type QuizQuestion = {
 export type Quiz = {
   documentId: string;
   title: string;
+  position: number;
   questions: QuizQuestion[];
 };
 

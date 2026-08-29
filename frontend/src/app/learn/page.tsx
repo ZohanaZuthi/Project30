@@ -19,7 +19,7 @@ export default async function MyCoursesPage() {
         <div>
           <p className="eyebrow">Student workspace</p>
           <h1>My courses</h1>
-          <p>Resume lessons, monitor completion, and take course quizzes.</p>
+          <p>Resume lessons and quizzes from one continuous learning path.</p>
         </div>
         <Link className="button primary" href="/courses">
           Explore courses
@@ -52,14 +52,14 @@ export default async function MyCoursesPage() {
                   <h2>{course.title}</h2>
                   <ProgressMeter
                     compact
-                    completed={progress.completedLessons}
+                    completed={progress.completedSteps}
                     percentage={progress.percentage}
-                    total={progress.totalLessons}
+                    total={progress.totalSteps}
                   />
                   <p className="learning-card-next">
                     <span>Up next</span>
                     <strong>
-                      {learningStatus.nextLesson?.title ??
+                      {learningStatus.nextStep?.title ??
                         (progress.percentage === 100
                           ? "Course completed"
                           : "Open course overview")}

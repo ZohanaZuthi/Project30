@@ -86,6 +86,10 @@ Quiz              1 --- * QuizAttempt * --- 1 User (student)
 User (author)      1 --- * BlogPost
 ```
 
+Lesson and Quiz remain specialized records but share a unique course-scoped
+`position`. The progress service merges them into one ordered curriculum, so a
+Quiz may appear before, between, or after General Lessons.
+
 Strapi 5 `documentId` values are the public identifiers used in URLs. Internal
 numeric database IDs are not treated as stable public identifiers.
 

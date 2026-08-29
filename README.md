@@ -1,792 +1,763 @@
-# Project30
+# Project30 Academy
 
-Project30 is a role-secured Learning Management System built as a Next.js
-frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
+Project30 Academy is a full-stack Learning Management System built for the
+Junior Software Engineer project round. It uses the required stack without
+substitution:
 
-## Completed so far (28 August 2026)
+| Layer | Technology | Deployment target |
+| --- | --- | --- |
+| Frontend | Next.js 16 App Router, React, TypeScript | Vercel |
+| Backend/CMS | Self-hosted Strapi 5.52.2 | Railway |
+| Database | PostgreSQL 16 | Railway PostgreSQL |
 
-- Next.js 16 App Router frontend in `frontend/`
-- Self-hosted Strapi 5.52.2 backend in `backend/` (no Strapi Cloud plugin)
-- PostgreSQL development service in `compose.yaml`
-- Railway health/build configuration in `backend/railway.json`
-- Version-controlled course, lesson, enrollment, progress, quiz, attempt, and
-  blog schemas
-- Reproducible Student, Instructor, Content Manager, and Admin application roles
-- Student-only public registration and refresh-token sessions behind a Next.js
-  `HttpOnly` cookie boundary
-- Authenticated role-aware dashboard and optimistic route protection
-- Public published-course read API
-- Admin/Content Manager platform-wide course access and Instructor ownership
-  enforcement in Strapi policies
-- Course draft/publish/create/edit/delete and ordered lesson create/edit/delete
-  screens
-- Complete Student journey: enroll, separate My Courses library, sequential
-  lessons, persistent progress, auto-graded quizzes, and attempt history
-- Instructor/Content Manager quiz CRUD plus student-progress views, restricted
-  to the courses each role is allowed to manage
-- Blog workspace with draft/publish/edit/delete controls and public
-  published-only list and article pages
-- Dedicated Admin dashboard with platform statistics, user role/status controls,
-  paginated users, unassigned-user counts, and access to every course and blog post
-- Responsive role-aware navigation, loading, empty, pending, success, and error
-  states across all workflows
-- Responsive Bangladesh-focused public home page, Strapi-backed course catalog,
-  course detail/curriculum pages, and privacy-enhanced lesson previews
-- Idempotent demo seed with four realistic courses, 17 lessons, four quizzes,
-  free-to-use Pexels photography, and public Bangla tutorial embeds
-- Complete Strapi APIs for enrollment, persistent progress, server-graded
-  quizzes and attempt history, draft/published blogs, and Admin users/stats
-- Transactional course/lesson cleanup, strict request allow-lists, safe DTOs,
-  unique lesson positions, backend-enforced lesson sequencing, and reproducible
-  action permissions plus ownership/enrollment policies
-- Atomic last-active-Admin protection, role-less refresh-session logout, exact
-  user statistics, and preserved history through block/role-removal controls
-- 21 backend unit assertions, 13 Strapi/Supertest API scenarios, and a dedicated
-  real refresh-session revocation scenario
-- Architecture, authorization, and deployment notes in `docs/`
+The repository is a modular monolith. Course, lesson, quiz, enrollment,
+progress, blog, and platform administration are separate Strapi modules, but
+they run in one backend process and share one transactional PostgreSQL database.
+No NATS, Kafka, RabbitMQ, or other message broker is required.
+
+## Current submission status
+
+The application code, local workflow, tests, Railway configuration, and
+deployment guide are complete. The final hosted links and walkthrough must be
+added after deployment:
+
+| Submission item | Status |
+| --- | --- |
+| Public GitHub repository | Available |
+| Vercel frontend URL | Deployment pending |
+| Railway backend URL | Deployment pending |
+| Video walkthrough URL | Recording pending |
+
+Do not submit until all four links are openable in a signed-out/incognito
+browser.
+
+## Reviewer access
+
+Public registration always creates a Student. An LMS Admin can promote that
+account to Instructor, Content Manager, or Admin.
+
+| Account | Value |
+| --- | --- |
+| Reviewer LMS Admin email | `iamadmin@gmail.com` |
+| Reviewer LMS Admin password | Shared privately with the reviewer |
+| Strapi CMS Admin | Separate account created at `/admin` |
+
+The LMS Admin password is intentionally not stored in this public repository.
+Publishing an Admin password would let anyone change roles, block users, or
+delete content on the deployed application. Provide the reviewer password in a
+private submission field or direct message, and rotate it after the interviews.
+
+The Strapi CMS Admin and LMS application Admin are different identities:
+
+- The Strapi CMS Admin signs in at the Railway backend's `/admin` portal and
+  administers Strapi itself.
+- The LMS Admin signs in through the Next.js application and is governed by the
+  same custom APIs and role policies as other application users.
+
+## What is implemented
+
+- Secure signup, login, refresh-token sessions, logout, and role-less-account
+  handling.
+- Four application roles: Admin, Content Manager, Instructor, and Student.
+- Backend-enforced role, ownership, enrollment, and sequential-access rules.
+- Course draft, publish, create, edit, and delete workflows.
+- A shared ordered curriculum where each position can be either:
+  - a General Lesson containing text, resource links, and/or a video URL; or
+  - an auto-graded MCQ Quiz.
+- Student course discovery, idempotent enrollment, and a separate My Courses
+  library.
+- Sequential lesson/quiz access enforced by Strapi, not only by the interface.
+- Persistent per-student, per-course progress derived from stored completion
+  facts and quiz attempts.
+- Server-side quiz grading with correct answers removed from Student responses.
+- Stored quiz result history with repeat attempts.
+- Instructor/Content Manager views of enrolled Student progress.
+- A dedicated LMS Admin dashboard with users, roles, account status, paginated
+  lists, content access, and platform statistics.
+- Last-active-Admin protection serialized with a PostgreSQL advisory
+  transaction lock.
+- Blog writing with author ownership and Strapi Draft & Publish.
+- Public published-only course and blog pages.
+- Bangladesh-focused responsive marketing, course, dashboard, and learning UI.
+- Reproducible demo courses, lessons, quizzes, and optional role accounts.
+- Unit, Strapi/Supertest API, and refresh-session tests.
+
+## System architecture
+
+```text
+Browser
+  |
+  | same-origin HTTPS
+  v
+Next.js on Vercel
+  |-- public and role-specific pages
+  |-- server-side data-access layer
+  |-- auth Route Handlers
+  |-- allow-listed /api/lms proxy
+  |-- HttpOnly access/refresh cookies
+  |
+  | Authorization: Bearer <Strapi access token>
+  v
+Strapi on Railway
+  |-- Users & Permissions authentication
+  |-- role and ownership policies
+  |-- request validation
+  |-- domain services and business rules
+  |-- quiz grading and progress calculation
+  v
+Railway PostgreSQL
+  |-- users and roles
+  |-- content and publication state
+  |-- enrollment, progress, and attempts
+  |-- Strapi refresh sessions
+```
+
+### Responsibility boundaries
+
+**Next.js**
+
+- Renders the public website and role-specific workspaces.
+- Stores Strapi tokens in `HttpOnly`, `SameSite=Lax` cookies; production
+  cookies are also `Secure`.
+- Uses Server Components and a server-only data-access layer for reads.
+- Adds the access token to browser mutations through an allow-listed same-origin
+  proxy.
+- Redirects obviously unauthorized navigation for good user experience.
+- Never connects directly to PostgreSQL and is not the final authorization
+  boundary.
+
+**Strapi**
+
+- Authenticates LMS users through Users & Permissions.
+- Makes every final role, ownership, enrollment, and sequence decision.
+- Accepts strict request shapes instead of unrestricted generated CRUD input.
+- Derives the current Student, Instructor, author, score, totals, timestamps,
+  unique keys, and slugs on the server.
+- Returns safe DTOs and never sends `correctOption` to a Student.
+- Owns every domain write.
+
+**PostgreSQL**
+
+- Is the source of truth for identities, content, relationships, progress, and
+  results.
+- Enforces unique enrollment and lesson-completion keys.
+- Supplies transactional locking for Admin membership changes and curriculum
+  position writes.
+
+## Portals and routes
+
+### Public portal
+
+| Route | What the visitor gets |
+| --- | --- |
+| `/` | Academy home page, featured courses, and platform introduction |
+| `/courses` | Published course catalog |
+| `/courses/:documentId` | Published course description and ordered curriculum |
+| `/blog` | Published blog posts |
+| `/blog/:slug` | One published article |
+| `/register` | Bangla-friendly Student registration |
+| `/login` | Login for every LMS role |
+
+Draft courses and draft blog posts never appear in the public portal.
+
+### Student portal
+
+| Route | What the Student gets |
+| --- | --- |
+| `/dashboard` | Real enrolled-course summary, progress, next step, and recent activity |
+| `/learn` | Separate My Courses library |
+| `/learn/:courseId` | One ordered curriculum of lessons and quizzes |
+| `/learn/:courseId/lessons/:lessonId` | Text/resources/video lesson and completion control |
+| `/learn/:courseId/quizzes/:quizId` | MCQ quiz with instant server result |
+| `/quiz-attempts` | Stored result history |
+
+A Student can open only a published course in which they are enrolled. Every
+step after the first stays locked until all previous curriculum steps are
+complete.
+
+### Course-management portal
+
+Admin, Content Manager, and Instructor use:
+
+| Route | What the manager gets |
+| --- | --- |
+| `/manage/courses` | All manageable courses |
+| `/manage/courses/new` | Course creation and draft/publish selection |
+| `/manage/courses/:id/edit` | Course fields, unified curriculum builder, quiz editor, and Student progress |
+
+The curriculum builder lets the setter choose `General lesson` or `Quiz`
+for a shared course position. This supports flows such as:
+
+```text
+1. General Lesson
+2. Quiz
+3. General Lesson
+4. Quiz
+```
+
+Every position must be unused. The backend checks positions across both the
+Lesson and Quiz collections under the same course-scoped transaction lock.
+
+### Blog-management portal
+
+Admin and Content Manager use:
+
+| Route | What the editor gets |
+| --- | --- |
+| `/manage/blogs` | Manageable draft and published posts |
+| `/manage/blogs/new` | New post editor |
+| `/manage/blogs/:id/edit` | Edit, publish, unpublish, or delete a post |
+
+Content Managers manage posts authored by their own account. Admins manage
+every author's posts.
+
+### LMS Admin portal
+
+Only an LMS application Admin can open `/admin`. It contains:
+
+- exact total users and counts by all four roles;
+- a visible unassigned-role bucket;
+- paginated user records;
+- role assignment, promotion, demotion, and role removal;
+- block/unblock controls;
+- total courses, lessons, enrollments, quizzes, attempts, and published posts;
+- direct management links for all courses and all blog posts.
+
+The final active Admin cannot be demoted, have their role removed, or be
+blocked. Blocked Admins do not count as active backup administrators.
+
+### Strapi and health portals
+
+| Route | Purpose |
+| --- | --- |
+| `http://localhost:1337/admin` | Strapi CMS administration |
+| `http://localhost:1337/api/health` | Backend readiness |
+| `http://localhost:3000/api/health` | Combined frontend-to-backend health |
+
+## Roles and permissions
+
+| Action | Admin | Content Manager | Instructor | Student |
+| --- | --- | --- | --- | --- |
+| Manage users and roles | All | No | No | No |
+| Create courses | Yes | Yes | Yes, assigned to self | No |
+| Edit/delete courses | All | All | Own only | No |
+| Manage lessons and quizzes | All | All | Own courses only | No |
+| View Student progress | All | All | Own courses only | Own only |
+| Manage blog posts | All | Own posts | No | No |
+| Enroll in courses | No | No | No | Yes |
+| View private lesson content | Managed courses | Managed courses | Own courses | Enrolled courses |
+| Take quizzes | No | No | No | Enrolled courses |
+
+The UI mirrors this table, but Strapi route permissions and policies are the
+enforcement boundary. Hiding navigation or buttons is never treated as
+authorization.
+
+## What is stored and where
+
+### Browser and Next.js cookies
+
+| Data | Storage | Notes |
+| --- | --- | --- |
+| Access token | HttpOnly cookie | 24-hour maximum age; browser JavaScript cannot read it |
+| Refresh token | HttpOnly cookie | 7-day maximum session age |
+| Role/content/progress | Not trusted in browser storage | Loaded from Strapi |
+
+The application does not store tokens in `localStorage`.
+
+### PostgreSQL domain records
+
+| Record | Important stored fields | Purpose |
+| --- | --- | --- |
+| User | username, normalized email, password hash, confirmed, blocked, role | LMS identity |
+| Role | name, type, controller permissions | Four-role authorization |
+| Course | title, slug, description, thumbnail URL, instructor, publication versions | Course library |
+| Lesson | title, content, video URL, position, course | General curriculum step |
+| Quiz | title, position, course, repeated Question components | Quiz curriculum step |
+| Question component | prompt, options, correct option index | Private grading source |
+| Enrollment | Student, course, enrolled timestamp, private unique key | Course membership |
+| LessonProgress | Student, lesson, completed timestamp, private unique key | Persistent completion fact |
+| QuizAttempt | Student, quiz, submitted answers, score, total, submitted timestamp | Immutable graded result |
+| BlogPost | title, slug, body, cover URL, author, publication versions | Draft/published editorial content |
+| Strapi session | user/session identity and refresh-token state | Refresh and revocation |
+
+### Derived rather than stored
+
+The system does not store a course percentage. It derives it from the current
+ordered curriculum:
+
+```text
+percentage = round(completed course steps / total course steps * 100)
+```
+
+A General Lesson is complete when its unique LessonProgress record exists. A
+Quiz is complete after a valid full submission creates at least one
+QuizAttempt. There is no mandatory pass mark in the supplied project brief, so
+any valid graded attempt completes the step; Students can retry and every
+attempt remains visible.
+
+If the curriculum changes, the next read recalculates progress using the
+current steps instead of trusting a stale stored percentage.
+
+### External media
+
+Course thumbnails, blog cover images, learning resources, and lesson videos are
+stored as URLs. Images are restricted to the configured safe remote host for
+Next Image. YouTube lessons use privacy-enhanced embed URLs. Resource URLs are
+rendered as safe React text/links, not injected HTML.
+
+## Main business flows
+
+### Authentication
+
+```text
+Registration form
+  -> Next.js validates username/email/password
+  -> Strapi registration receives no role field
+  -> Strapi assigns Student
+  -> Next.js stores access/refresh tokens in HttpOnly cookies
+  -> /api/lms/me returns a minimal safe user and role
+```
+
+Only the LMS Admin role-management endpoint can assign privileged roles. Email
+uniqueness is enabled in Strapi.
+
+### Enrollment
+
+```text
+Student selects Enroll
+  -> Student-only Strapi policy
+  -> published course is verified
+  -> authenticated user becomes enrollment owner
+  -> server creates student:course unique key
+  -> duplicate request returns the existing enrollment
+```
+
+The browser never sends a Student ID.
+
+### Curriculum and sequence
+
+Lessons and quizzes have one shared ordered position space. For every Student
+read or mutation, Strapi rebuilds the ordered list and marks a step locked
+unless every earlier step has a completion fact.
+
+This guard runs when:
+
+- opening a lesson;
+- marking a lesson complete;
+- opening a quiz; and
+- submitting a quiz.
+
+Changing a URL or sending a direct HTTP request cannot skip the sequence.
+
+### Lesson progress
+
+```text
+Mark complete button
+  -> Next.js allow-listed proxy adds JWT
+  -> Strapi verifies enrollment and sequence
+  -> unique Student/Lesson completion row is created
+  -> duplicate completion returns the existing row
+  -> fresh combined lesson/quiz progress is returned
+```
+
+### Quiz grading
+
+```text
+Student quiz read
+  -> prompt + options only
+  -> correctOption removed
+
+Student submit
+  -> answers must match the exact question count
+  -> every option index is validated
+  -> Strapi loads private correctOption values
+  -> score, total, and percentage are computed
+  -> attempt is stored
+  -> result is returned immediately
+```
+
+The request cannot supply Student ID, score, total, or correct answers.
+
+### Course and blog publication
+
+Course and BlogPost use Strapi Draft & Publish:
+
+- leave the Publish checkbox clear to save a private draft;
+- edit later and select Publish to expose it publicly;
+- clear Publish on an existing item to unpublish it without deleting the draft.
+
+Lesson and Quiz do not have independent Draft & Publish states. They belong to
+the parent course. Changes to steps in an already-published course therefore
+affect that course immediately.
+
+### User role and status management
+
+```text
+Admin role/status request
+  -> Admin-only policy
+  -> PostgreSQL advisory transaction lock
+  -> target user and active Admin count loaded
+  -> last-active-Admin rule checked
+  -> role/status updated
+  -> exact safe user DTO returned
+```
+
+Permanent application-user deletion is not exposed. Removing a role leaves an
+explicit unassigned account with no private LMS permissions. Blocking suspends
+authentication. Both operations preserve enrollment, lesson progress, and quiz
+history relations.
+
+## API reference
+
+### Public and authentication
+
+| Method | Endpoint | Access |
+| --- | --- | --- |
+| POST | `/api/auth/local/register` | Public; always creates Student |
+| POST | `/api/auth/local` | Public login |
+| POST | `/api/auth/refresh` | Valid refresh session |
+| GET | `/api/lms/me` | Signed-in or role-less account |
+| POST | `/api/lms/logout` | Idempotent refresh-session revocation |
+| GET | `/api/lms/courses` | Public published courses |
+| GET | `/api/lms/courses/:courseId` | Public published course |
+| GET | `/api/lms/blog-posts` | Public published posts |
+| GET | `/api/lms/blog-posts/:slug` | Public published post |
+
+### Course management
+
+| Method | Endpoint | Access |
+| --- | --- | --- |
+| GET/POST | `/api/lms/manage/courses` | Admin, Content Manager, Instructor |
+| GET/PUT/DELETE | `/api/lms/manage/courses/:courseId` | Admin/CM all; Instructor own |
+| GET/POST | `/api/lms/manage/courses/:courseId/lessons` | Manageable course |
+| PUT/DELETE | `/api/lms/manage/lessons/:lessonId` | Manageable course |
+| GET/POST | `/api/lms/manage/courses/:courseId/quizzes` | Manageable course |
+| PUT/DELETE | `/api/lms/manage/quizzes/:quizId` | Manageable course |
+| GET | `/api/lms/manage/courses/:courseId/progress` | Manageable course |
+
+### Student learning
+
+| Method | Endpoint | Access |
+| --- | --- | --- |
+| POST | `/api/lms/courses/:courseId/enroll` | Student |
+| GET | `/api/lms/my-courses` | Student |
+| GET | `/api/lms/my-courses/:courseId` | Enrolled Student |
+| GET | `/api/lms/my-courses/:courseId/progress` | Enrolled Student |
+| GET | `/api/lms/my-courses/:courseId/lessons/:lessonId` | Enrolled and unlocked |
+| PUT | `/api/lms/my-courses/:courseId/lessons/:lessonId/complete` | Enrolled and unlocked |
+| GET | `/api/lms/my-courses/:courseId/quizzes` | Enrolled; summaries only |
+| GET | `/api/lms/my-courses/:courseId/quizzes/:quizId` | Enrolled and unlocked |
+| POST | `/api/lms/my-courses/:courseId/quizzes/:quizId/attempts` | Enrolled and unlocked |
+| GET | `/api/lms/my-quiz-attempts` | Student's own attempts |
+
+### Blog and Admin management
+
+| Method | Endpoint | Access |
+| --- | --- | --- |
+| GET/POST | `/api/lms/manage/blog-posts` | Admin or Content Manager |
+| GET/PUT/DELETE | `/api/lms/manage/blog-posts/:postId` | Admin all; CM own |
+| GET | `/api/lms/admin/users` | Admin |
+| PATCH | `/api/lms/admin/users/:userId/role` | Admin |
+| PATCH | `/api/lms/admin/users/:userId/status` | Admin |
+| GET | `/api/lms/admin/stats` | Admin |
+
+## Repository structure
+
+```text
+Project30/
+|-- frontend/
+|   |-- src/app/                 Next.js routes and Route Handlers
+|   |-- src/components/          auth, dashboard, learning, blog, admin UI
+|   |-- src/lib/dal/             server-only data-access layer
+|   |-- src/lib/auth/            cookie/session and auth validation
+|   |-- src/proxy.ts             optimistic protected-route redirect
+|   |-- next.config.ts
+|   `-- .env.example
+|-- backend/
+|   |-- config/                  Strapi, database, CORS, session configuration
+|   |-- src/api/
+|   |   |-- account/             current identity and logout
+|   |   |-- course/              course CRUD and ownership
+|   |   |-- lesson/              general steps and sequence
+|   |   |-- enrollment/          Student/course membership
+|   |   |-- lesson-progress/     completion and derived progress
+|   |   |-- quiz/                questions, ordering, and grading
+|   |   |-- quiz-attempt/        result history
+|   |   |-- blog-post/           author and publication workflow
+|   |   |-- platform/            Admin users, roles, status, and stats
+|   |   `-- health/              Railway readiness
+|   |-- src/policies/            role, ownership, and enrollment guards
+|   |-- src/utils/               validation, grading, locks, unique keys
+|   |-- scripts/seed-demo.js
+|   |-- tests/
+|   |-- railway.json
+|   `-- .env.example
+|-- docs/                        architecture, decisions, role and deployment guides
+|-- compose.yaml                 local PostgreSQL
+|-- package.json                 root convenience scripts
+`-- README.md
+```
+
+The backend request direction is:
+
+```text
+route -> Strapi authentication/action permission -> policy
+      -> controller validation -> service business rules -> PostgreSQL
+```
 
 ## Run locally
 
-Requirements: Node.js 20+, npm, and Docker with Docker Compose.
+### Requirements
+
+- Node.js 20 or newer
+- npm
+- Docker Engine with Docker Compose
+
+If Docker reports permission denied for `/var/run/docker.sock`, start Docker
+and configure the current Linux user for Docker before continuing. Do not run
+the application database as an unrelated root-owned manual process.
+
+### 1. Install and configure
 
 ```bash
+git clone https://github.com/ZohanaZuthi/Project30.git
+cd Project30
+
 docker compose up -d postgres
+
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
-npm --prefix backend install
-npm --prefix frontend install
+
+npm --prefix backend ci
+npm --prefix frontend ci
 ```
 
-Replace the placeholder Strapi secrets in `backend/.env`, then seed the catalog
-before starting Strapi. The seed command builds the backend first and is safe to
-run more than once because it looks up each record before creating it:
+Replace every `replace-me` Strapi secret in `backend/.env`. Generate random
+values with:
+
+```bash
+openssl rand -base64 32
+```
+
+### 2. Seed optional demo content
 
 ```bash
 npm run seed:demo
 ```
 
-For a repeatable four-role walkthrough, set one local-only password while
-seeding (minimum eight characters):
+To create the four local walkthrough accounts, supply one local-only password:
 
 ```bash
 DEMO_USER_PASSWORD='choose-a-local-password' npm run seed:demo
 ```
 
-This creates these application accounts, all using that password:
+This creates:
 
-| Email                        | LMS role        |
-| ---------------------------- | --------------- |
-| `student@project30.local`    | Student         |
-| `instructor@project30.local` | Instructor      |
-| `manager@project30.local`    | Content Manager |
-| `admin@project30.local`      | Admin           |
+| Email | LMS role |
+| --- | --- |
+| `student@project30.local` | Student |
+| `instructor@project30.local` | Instructor |
+| `manager@project30.local` | Content Manager |
+| `admin@project30.local` | Admin |
 
-Do not configure `DEMO_USER_PASSWORD` in a public or production environment.
+Never configure `DEMO_USER_PASSWORD` in Railway or commit a real password.
 
-Then run the apps in separate terminals:
+### 3. Start both applications
+
+Use separate terminals:
 
 ```bash
 npm run dev:backend
+```
+
+```bash
 npm run dev:frontend
 ```
 
-- Frontend: `http://localhost:3000`
-- Strapi admin: `http://localhost:1337/admin`
-- Backend health: `http://localhost:1337/api/health`
-- Combined frontend health: `http://localhost:3000/api/health`
-- Public course catalog: `http://localhost:3000/courses`
-- Student learning area: `http://localhost:3000/learn`
-- Published blog: `http://localhost:3000/blog`
-- LMS Admin dashboard: `http://localhost:3000/admin`
-- Third-party media credits: `http://localhost:3000/media-credits`
+Open:
 
-Public registration always creates a Student. Use the LMS Admin screen to
-promote application users after the first Admin exists. For initial local setup,
-use the optional demo accounts above or assign the first application Admin from
-Strapi's Content Manager. The Strapi CMS administrator is a separate identity
-from an LMS application Admin.
+- Next.js: <http://localhost:3000>
+- Strapi CMS: <http://localhost:1337/admin>
+- Backend health: <http://localhost:1337/api/health>
+- Combined health: <http://localhost:3000/api/health>
 
-Verification commands:
+On the first Strapi start, create the separate CMS administrator at
+`/admin`. For the first LMS application Admin, use a local seeded account or
+assign the Admin application role through Strapi's Content Manager.
+
+## Environment variables
+
+### Backend
+
+| Variable | Purpose |
+| --- | --- |
+| `HOST`, `PORT`, `PUBLIC_URL`, `IS_PROXIED` | Railway server address |
+| `CLIENT_URLS` | Allowed Next.js origins |
+| `APP_KEYS` | Strapi application signing keys |
+| `API_TOKEN_SALT` | API token hashing |
+| `ADMIN_JWT_SECRET` | Strapi CMS Admin JWT signing |
+| `TRANSFER_TOKEN_SALT` | Transfer token hashing |
+| `JWT_SECRET` | LMS Users & Permissions JWT signing |
+| `ENCRYPTION_KEY` | Strapi secret encryption |
+| `DATABASE_*` or `DATABASE_URL` | PostgreSQL connection |
+| `DATABASE_SSL` | Production PostgreSQL TLS |
+
+### Frontend
+
+| Variable | Purpose |
+| --- | --- |
+| `STRAPI_URL` | Server-only Railway backend URL |
+
+`STRAPI_URL` must not be prefixed with `NEXT_PUBLIC_`; browser code does not
+need the backend origin or tokens.
+
+## Verification
+
+Run from the repository root:
 
 ```bash
-npm test
 npm run lint
 npm run build
+npm test
 ```
 
-The 28 August dependency audit is documented in the backend guide. Frontend
-production dependencies currently report zero findings; Strapi 5.52.2 still
-inherits Admin/build-tool findings whose npm forced fix would incorrectly
-downgrade the project to Strapi 4.26.2. Recheck for a Strapi 5 patch immediately
-before Railway deployment.
+Current verified result:
 
-See [`docs/backend-implementation-guide.md`](docs/backend-implementation-guide.md)
-for the endpoint-by-endpoint code tour, request flows, test strategy, security
-reasoning, and interview questions. The earlier authentication/course slice is
-documented in [`docs/day-02-auth-and-content.md`](docs/day-02-auth-and-content.md).
-The UI research, media choices, data flow, and likely frontend interview questions
-are documented in [`docs/frontend-experience-guide.md`](docs/frontend-experience-guide.md).
-The exact four-role demonstration path, API calls, backend checks, and interview
-explanations are in [`docs/role-flow-walkthrough.md`](docs/role-flow-walkthrough.md).
+- Frontend ESLint: passed
+- Next.js TypeScript production build: passed
+- Strapi production build: passed
+- Unit test suites: 6 passed
+- Unit tests: 22 passed
+- Strapi/Supertest API scenarios: 13 passed
+- Refresh-session revocation scenario: passed
 
-The long-form implementation plan follows below.
+The API tests boot a real Strapi instance against an isolated SQLite test
+database. Production uses PostgreSQL, so final Railway smoke tests must also
+verify the PostgreSQL-specific advisory-lock paths.
 
-You can build a strong submission in five days if you treat security and complete workflows as the product. Use Strapi 5, Next.js App Router with TypeScript, PostgreSQL from the beginning, and deploy a working skeleton on day one.
+Important negative cases covered include:
 
-The most important architectural decision: Next.js controls the interface and session experience, but Strapi must make every final authorization decision.
+- public registration cannot select Admin;
+- Student cannot create courses;
+- another Instructor cannot edit an owned course;
+- enrollment and completion cannot be duplicated;
+- locked curriculum steps cannot be opened directly;
+- Lesson and Quiz cannot claim the same position;
+- quiz correct answers are absent from Student responses;
+- forged score, missing answers, extra answers, and invalid options are rejected;
+- draft posts are absent from the public blog;
+- non-Admin cannot manage roles;
+- last active Admin cannot be removed;
+- role-less logout revokes its refresh session.
 
-## 1. Recommended architecture
+## Deployment
+
+### Railway
+
+1. Create a Railway project.
+2. Add a PostgreSQL service.
+3. Add the GitHub repository as another service.
+4. Set the Strapi service root directory to `backend`.
+5. Generate a public backend domain.
+6. Configure the variables documented in
+   [docs/deployment.md](docs/deployment.md).
+7. Verify `GET https://<backend-domain>/api/health`.
+8. Open `https://<backend-domain>/admin` and create the Strapi CMS Admin.
+
+`backend/railway.json` defines the build, start, health, retry, and restart
+configuration.
+
+### Vercel
+
+1. Import the same GitHub repository.
+2. Set Root Directory to `frontend`.
+3. Keep the detected Next.js framework.
+4. Add server-only `STRAPI_URL=https://<railway-backend-domain>`.
+5. Deploy or redeploy after changing the environment variable.
+6. Verify `GET https://<frontend-domain>/api/health`.
+
+Set Railway `CLIENT_URLS` to the final Vercel domain and redeploy Strapi.
+
+### Production smoke test
+
+Verify in a signed-out/incognito browser:
+
+1. Published course and blog pages open publicly.
+2. Registration creates a Student.
+3. Student enrolls, completes a lesson, refreshes, and keeps progress.
+4. Student completes a quiz and later sees its result.
+5. Instructor can manage only an owned course.
+6. Content Manager can manage all courses and own blog posts.
+7. Admin can change a user's role and see exact statistics.
+8. Draft course/blog remains absent from public APIs.
+9. Railway and frontend health endpoints return HTTP 200.
+
+## Security decisions
+
+- Privileged roles cannot be selected during registration.
+- Correct quiz answers are server-only.
+- Student IDs, ownership, scores, timestamps, and unique keys are server-derived.
+- Generic unrestricted domain CRUD is not exposed to application roles.
+- Next.js mutations use an explicit root allow-list and reject cross-origin
+  state-changing requests.
+- User-facing content renders as React text; no `dangerouslySetInnerHTML` is
+  used.
+- Public reads explicitly request published Strapi document versions.
+- Role removal and blocking preserve learning history.
+- Last-active-Admin changes are atomic in PostgreSQL.
+
+The frontend production dependency audit currently reports no findings. Strapi
+5.52.2 inherits Admin/build-tool advisories from its dependency tree. Do not run
+`npm audit fix --force`, because npm proposes an incompatible Strapi 4
+downgrade. Keep Strapi on the latest tested 5.x patch, restrict the CMS Admin,
+and repeat the audit before deployment.
+
+## Intentional scope and known behavior
+
+- All demo courses are free. Payments were not requested by the project brief.
+- Certificates, chat, live classes, and custom video upload are outside scope.
+- Image and video URLs avoid relying on Railway's ephemeral local filesystem.
+- Quiz completion requires a valid full submission but not a minimum score,
+  because the brief defines auto-grading without a pass threshold.
+- A Student may retake a quiz; every attempt is stored.
+- Deleting a Quiz deliberately deletes its dependent attempt records after an
+  explicit warning. A production audit-retention version would archive the Quiz
+  or snapshot Quiz metadata inside attempts instead.
+- Access tokens last 24 hours. A refresh endpoint exists, but automatic browser
+  refresh/retry is a future UX improvement.
+- Curriculum positions are explicit. Moving onto an occupied position is
+  rejected instead of silently reordering other content.
+- API integration tests use SQLite for isolation; PostgreSQL deployment smoke
+  checks remain required.
+
+## Ten-minute video walkthrough
 
 ```text
-Browser
-   │
-   │ Forms / navigation
-   ▼
-Next.js on Vercel
-   ├── Public pages
-   ├── Role-specific dashboards
-   ├── Server-side data-access layer
-   └── Route handlers storing JWT in an HttpOnly cookie
-                │
-                │ Authorization: Bearer <JWT>
-                ▼
-Strapi 5 on Railway
-   ├── Authentication
-   ├── Roles and permissions
-   ├── Custom policies
-   ├── Controllers and services
-   └── PostgreSQL
+0:00-0:40  Architecture, mandatory stack, and four roles
+0:40-2:30  Student: register/login -> enroll -> lesson -> progress -> quiz -> history
+2:30-4:15  Instructor: own course -> choose lesson/quiz step -> progress view
+4:15-5:15  Content Manager: platform course access -> blog draft -> publish
+5:15-6:15  Admin: stats -> role change -> last-Admin safety
+6:15-7:15  One frontend -> Next proxy -> Strapi -> PostgreSQL data flow
+7:15-8:15  Backend policies and Instructor ownership
+8:15-9:05  Progress logic and unique records line by line
+9:05-9:40  Quiz answer privacy and server grading
+9:40-10:00 Vercel, Railway, PostgreSQL, and environment variables
 ```
 
-Use a monorepo:
-
-```text
-lms/
-├── frontend/                # Next.js
-├── backend/                 # Strapi
-├── docs/
-│   ├── architecture.md
-│   ├── permission-matrix.md
-│   └── decisions.md
-├── README.md
-└── .gitignore
-```
-
-Why this architecture is strong:
-
-- Strapi owns the database and business rules.
-- Next.js never connects directly to PostgreSQL.
-- The JWT can remain in a secure `HttpOnly` cookie rather than `localStorage`.
-- Next.js route protection improves UX, but Strapi policies stop actual unauthorized operations.
-- Business logic lives in Strapi services and can be demonstrated clearly in the video.
-
-Next.js recommends centralizing authorization and safe data fetching in a server-side data-access layer, and warns that every mutation endpoint must independently authenticate and authorize its caller. [Next.js authentication guidance](https://nextjs.org/docs/app/guides/authentication) and [data-security guidance](https://nextjs.org/docs/app/guides/data-security) are worth reading before implementation.
-
-## 2. Important role decision
-
-Do not let a person choose “Admin” or “Instructor” during public registration.
-
-Use this workflow:
-
-1. Every new registration receives the Student role.
-2. An application Admin can promote the user to Instructor, Content Manager, or Admin.
-3. Only an Admin endpoint can modify roles.
-4. Prevent the last active Admin from being demoted or blocked, using a
-   PostgreSQL transaction lock so concurrent requests cannot bypass the rule.
-   Accounts whose role is removed enter an explicit unassigned state with no
-   LMS permissions until an Admin assigns a new role.
-
-Otherwise, anyone could register as an Admin and take over the platform.
-
-Also understand that these are two different concepts in Strapi:
-
-- Strapi administrator: logs into Railway’s `/admin` CMS interface.
-- LMS application Admin: logs into your Next.js application and is stored through Strapi’s Users & Permissions plugin.
-
-Your dedicated LMS admin dashboard must be built in Next.js. Do not present the default Strapi CMS dashboard as the required admin panel.
-
-## 3. Data model
-
-Keep the model small and relational.
-
-| Collection     | Important fields                                              |
-| -------------- | ------------------------------------------------------------- |
-| User           | username, email, password, role                               |
-| Course         | title, slug, description, thumbnailUrl, instructor, published |
-| Lesson         | title, content, videoUrl, position, course                    |
-| Enrollment     | student, course, enrolledAt, uniqueKey                        |
-| LessonProgress | student, lesson, completedAt, uniqueKey                       |
-| Quiz           | title, course, questions                                      |
-| QuizAttempt    | student, quiz, answers, score, total, submittedAt             |
-| BlogPost       | title, slug, body, coverImageUrl, author, draft/published     |
-
-Relations:
-
-```text
-User (instructor) 1 ─── * Course
-Course            1 ─── * Lesson
-Course            1 ─── * Enrollment * ─── 1 User (student)
-Lesson            1 ─── * LessonProgress * ─── 1 User
-Course            1 ─── * Quiz
-Quiz              1 ─── * QuizAttempt * ─── 1 User
-User              1 ─── * BlogPost
-```
-
-### Questions
-
-A simple Strapi repeatable component can contain:
-
-```text
-question
-options: JSON array of strings
-correctOption: integer
-```
-
-The standard quiz API must never be available to students because it would expose `correctOption`.
-
-Instead, provide a custom “take quiz” endpoint that returns:
-
-```json
-{
-  "documentId": "quiz-id",
-  "title": "JavaScript Basics",
-  "questions": [
-    {
-      "question": "Which value is falsy?",
-      "options": ["{}", "[]", "0", "\"hello\""]
-    }
-  ]
-}
-```
-
-Only the submit endpoint reads `correctOption` internally.
-
-### Uniqueness
-
-Strapi does not automatically give you every composite uniqueness constraint you need. Generate server-controlled unique strings:
-
-```text
-Enrollment.uniqueKey = studentId:courseDocumentId
-LessonProgress.uniqueKey = studentId:lessonDocumentId
-```
-
-Mark them unique. This prevents duplicate enrollments and duplicate completion rows, including rapid double-clicks.
-
-## 4. Backend structure
-
-Suggested Strapi organization:
-
-```text
-backend/src/
-├── api/
-│   ├── course/
-│   ├── lesson/
-│   ├── enrollment/
-│   ├── lesson-progress/
-│   ├── quiz/
-│   ├── quiz-attempt/
-│   ├── blog-post/
-│   └── platform/
-├── policies/
-│   ├── is-admin.ts
-│   ├── can-manage-course.ts
-│   ├── can-view-course-progress.ts
-│   └── can-manage-blog.ts
-├── utils/
-│   ├── authorization.ts
-│   └── validation.ts
-└── index.ts                 # role/permission/bootstrap logic
-```
-
-Responsibilities:
-
-- Route: declares the URL and attached policies.
-- Policy: answers “may this user perform this action?”
-- Controller: validates the request and creates the HTTP response.
-- Service: performs enrollment, progress, grading, deletion, or statistics logic.
-- Document Service: reads and writes Strapi records.
-
-Strapi 5 supports custom routes, controllers, services, policies, and the Document Service API. [Strapi 5 documentation](https://docs.strapi.io/)
-
-Avoid relying entirely on permissions configured manually through the local Strapi dashboard. Those settings are database records and may not automatically appear in a fresh Railway database. Add reproducible bootstrap or seed logic for:
-
-- Student
-- Instructor
-- Content Manager
-- Admin
-- Their route permissions
-- Optional demo accounts/data
-
-Make the bootstrap idempotent so restarting Strapi does not create duplicates.
-
-## 5. Authorization rules
-
-Create centralized authorization helpers instead of scattering role comparisons everywhere.
-
-Conceptually:
-
-```ts
-isAdmin(user);
-isContentManager(user);
-isInstructor(user);
-isStudent(user);
-
-canManageAnyCourse(user);
-canManageCourse(user, course);
-canViewCourseProgress(user, course);
-canManageBlogPost(user, post);
-```
-
-`canManageCourse` should mean:
-
-```text
-Admin                    → yes
-Content Manager          → yes
-Instructor + owns course → yes
-Everyone else            → no
-```
-
-Instructor ownership must be checked using the course loaded from the database. Never accept `ownerId` from the frontend as proof of ownership.
-
-When an Instructor creates a course:
-
-- Assign the authenticated instructor on the server.
-- Ignore any instructor ID supplied by the request.
-- Do not allow them to change ownership.
-
-For every restricted action:
-
-1. Confirm a valid authenticated user.
-2. Load the target record.
-3. inspect the role.
-4. Check ownership/enrollment when required.
-5. Validate allowed input fields.
-6. Perform the operation.
-
-Use consistent responses:
-
-- `401`: no valid login.
-- `403`: logged in but insufficient permission.
-- `404`: record does not exist.
-- `409`: already enrolled or other conflict.
-- `400`: invalid request.
-
-Disable generated content API routes that you do not need. Expose controlled custom routes instead of accidentally giving Students generic create/update/delete access.
-
-## 6. Core API design
-
-A clean custom API could look like this:
-
-```text
-Authentication
-POST   /api/auth/local
-POST   /api/auth/local/register
-GET    /api/users/me
-
-Courses
-GET    /api/courses/available
-GET    /api/courses/:documentId
-POST   /api/courses
-PUT    /api/courses/:documentId
-DELETE /api/courses/:documentId
-
-Lessons
-GET    /api/courses/:documentId/lessons
-POST   /api/courses/:documentId/lessons
-PUT    /api/lessons/:documentId
-DELETE /api/lessons/:documentId
-
-Student learning
-POST   /api/courses/:documentId/enroll
-GET    /api/me/courses
-POST   /api/lessons/:documentId/complete
-GET    /api/courses/:documentId/my-progress
-
-Quizzes
-GET    /api/quizzes/:documentId/take
-POST   /api/quizzes/:documentId/submit
-GET    /api/quizzes/:documentId/my-attempts
-
-Course progress
-GET    /api/courses/:documentId/students
-
-Blog
-GET    /api/blog/posts
-GET    /api/blog/posts/:slug
-POST   /api/blog/posts
-PUT    /api/blog/posts/:documentId
-DELETE /api/blog/posts/:documentId
-POST   /api/blog/posts/:documentId/publish
-POST   /api/blog/posts/:documentId/unpublish
-
-Admin
-GET    /api/admin/stats
-GET    /api/admin/users
-PUT    /api/admin/users/:id/role
-```
-
-Public course responses should contain summaries. Lesson content should only be returned to an enrolled Student or authorized staff member.
-
-## 7. Progress logic
-
-Do not store `progressPercentage` as the source of truth.
-
-Store individual lesson completions and calculate:
-
-```ts
-percentage =
-  totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
-```
-
-A completion request should:
-
-1. Authenticate the Student.
-2. Load the lesson and its course.
-3. Confirm the Student has an Enrollment for that course.
-4. Look for an existing completion record.
-5. Return the existing result if already completed.
-6. Otherwise create a LessonProgress record.
-7. Recount completed lessons and total lessons.
-8. Return the new percentage.
-
-This is accurate after refresh because completion records are stored in PostgreSQL. It also handles a new lesson being added later: the calculated percentage decreases appropriately.
-
-Other edge cases:
-
-- Zero lessons means 0%, not division by zero.
-- Count distinct completed lessons.
-- Deleted lessons must not remain in the denominator.
-- Students cannot submit completion for someone else.
-- Students cannot complete lessons in unenrolled courses.
-
-This is an excellent feature to explain line by line in the walkthrough.
-
-## 8. Quiz grading logic
-
-The browser should submit only answer indexes:
-
-```json
-{
-  "answers": [2, 0, 3]
-}
-```
-
-The backend:
-
-1. Authenticates the Student.
-2. Checks enrollment.
-3. Loads the quiz including correct answers.
-4. Validates the number and range of submitted answers.
-5. Compares submitted indexes with stored correct indexes.
-6. Calculates the score.
-7. Stores an immutable QuizAttempt.
-8. Returns the score.
-
-Conceptually:
-
-```ts
-const score = questions.reduce((points, question, index) => {
-  return points + (answers[index] === question.correctOption ? 1 : 0);
-}, 0);
-```
-
-Never accept these from the client:
-
-```text
-score
-total
-studentId
-correctAnswers
-```
-
-Derive all of them on the backend.
-
-Allow multiple attempts and display attempt history unless you deliberately choose one attempt. Document that choice in `docs/decisions.md`.
-
-## 9. Blog design
-
-Enable Strapi Draft & Publish for BlogPost.
-
-Rules:
-
-- Public and Students only receive published posts.
-- Content Managers create posts with themselves assigned as author.
-- Content Managers manage only their own posts.
-- Admins manage every post.
-- A draft is never returned simply because someone knows its document ID.
-- Publish/unpublish must be authorized backend operations.
-
-This gives you a clean video demonstration:
-
-```text
-Content Manager creates draft
-        ↓
-Public blog does not show it
-        ↓
-Content Manager publishes it
-        ↓
-Public blog now shows it
-```
-
-Using image URLs is a sensible scope decision. Railway’s filesystem is ephemeral unless a volume or object storage is configured, while the brief explicitly permits cover image URLs. [Railway’s Strapi deployment guide](https://docs.railway.com/guides/strapi)
-
-## 10. Frontend pages
-
-Keep one visual system and change navigation/actions by role.
-
-```text
-Public
-/
-├── /courses
-├── /courses/[slug]
-├── /blog
-├── /blog/[slug]
-├── /login
-└── /register
-
-Student
-/dashboard
-├── /my-courses
-├── /learn/[courseId]/[lessonId]
-├── /quiz/[quizId]
-└── /quiz/[quizId]/results
-
-Instructor / Content Manager
-/dashboard/manage/courses
-├── /new
-├── /[courseId]/edit
-├── /[courseId]/lessons
-├── /[courseId]/quizzes
-└── /[courseId]/students
-
-Content Manager
-/dashboard/manage/blog
-
-Admin
-/dashboard/admin
-├── /users
-├── /courses
-├── /blogs
-└── /stats
-```
-
-Use:
-
-- Server Components for initial reads.
-- Client Components only for interactive forms, quiz state, and lesson completion.
-- A small server-side API client.
-- Loading and error states.
-- Form validation on both frontend and backend.
-- Route redirection for UX, followed by real Strapi authorization.
-
-Do not spend significant time on animations, certificates, payments, chat, email verification, or custom video uploads.
-
-## 11. Knowledge to learn for each part
-
-| Part                        | Learn                                     | You understand it when you can explain                      |
-| --------------------------- | ----------------------------------------- | ----------------------------------------------------------- |
-| HTTP                        | methods, headers, status codes, JSON      | Why a forbidden update returns 403                          |
-| Authentication              | password login, JWT, cookies              | How the JWT reaches Strapi                                  |
-| Authorization               | RBAC, ownership, IDOR                     | Why Instructor A cannot edit Instructor B’s course          |
-| Database                    | relations and uniqueness                  | Why progress needs Student + Lesson                         |
-| Strapi content types        | collections, components, relations        | How Course and Lesson records are connected                 |
-| Strapi backend              | routes, policies, controllers, services   | Which layer checks permission and which calculates progress |
-| Strapi Document Service     | find, create, update, delete              | How records are loaded and persisted                        |
-| Next.js App Router          | layouts, pages, dynamic routes            | How `/learn/[courseId]/[lessonId]` works                    |
-| Server vs Client Components | execution location and serialization      | Why the quiz form needs client state                        |
-| Security                    | input validation and information leakage  | Why correct quiz answers never reach the browser            |
-| Deployment                  | environment variables, CORS, PostgreSQL   | How Vercel securely reaches Railway                         |
-| Testing                     | positive and negative authorization cases | How you prove a Student cannot create a course              |
-
-Use a learning loop for each feature:
-
-1. Read the relevant documentation for 30–45 minutes.
-2. Build the smallest version.
-3. Test it from the API directly.
-4. Explain the request and data flow aloud without looking at notes.
-5. Write a short decision note.
-
-That last step protects you during the walkthrough.
-
-## 12. Five-day execution plan
-
-### August 25 — foundation and deployment
-
-- Confirm the deadline timezone with the organizer.
-- Create the monorepo and initial commits.
-- Scaffold Next.js and Strapi 5 with TypeScript.
-- Configure PostgreSQL.
-- Deploy empty frontend to Vercel.
-- Deploy empty backend and PostgreSQL to Railway.
-- Configure CORS and environment variables.
-- Create the data model.
-- Write the permission matrix and architectural decisions.
-
-End-of-day proof: both live URLs work and Next.js can fetch a health endpoint from Strapi.
-
-### August 26 — authentication, roles, courses and lessons
-
-- Registration defaults to Student.
-- Login/logout with HttpOnly JWT cookie.
-- Add server-side `currentUser` retrieval.
-- Bootstrap the four roles.
-- Build reusable authorization helpers and policies.
-- Implement course and lesson CRUD.
-- Test Instructor ownership with two separate instructors.
-- Build basic management pages.
-
-End-of-day proof: Instructor A cannot modify Instructor B’s course even with a direct API request.
-
-### August 27 — complete Student flow
-
-- Public course browsing.
-- Enrollment with duplicate protection.
-- My Courses.
-- Ordered lesson viewer.
-- Previous/next lesson navigation.
-- Mark complete.
-- Persist and calculate progress.
-- Display course-level progress.
-
-End-of-day proof: register → enroll → complete lessons → refresh → progress remains accurate.
-
-### August 28 — quizzes
-
-- Quiz editor for authorized staff.
-- Safe student quiz endpoint.
-- Server-side auto-grading.
-- Persist QuizAttempt.
-- Result and attempt-history UI.
-- Test malformed answers and correct-answer leakage.
-
-End-of-day proof: the browser network response never contains `correctOption`, but submission immediately returns a stored score.
-
-### August 29 — admin and blog
-
-- Admin stats.
-- User list and role changes.
-- Last-admin/self-lockout protection.
-- Admin management of courses, lessons, and posts.
-- Content Manager blog authoring.
-- Draft/publish flow.
-- Public blog list and details.
-- Polish role-aware navigation and responsive layout.
-
-End-of-day proof: an Admin promotes a Student to Instructor, and the user receives the new access after signing in again or refreshing their current user data.
-
-### August 30 — hardening and submission
-
-Morning:
-
-- Run the complete permission test matrix.
-- Test production, not only localhost.
-- Seed stable demo accounts and content.
-- Fix empty, loading, error, and unauthorized states.
-- Check Railway restart persistence.
-- Check Vercel production environment variables.
-
-Afternoon:
-
-- Finish README.
-- Add screenshots and architecture explanation.
-- Rehearse the video twice.
-- Record a 9–9.5 minute walkthrough.
-- Verify all links in an incognito browser.
-- Submit several hours before closing.
-
-Railway documents the PostgreSQL and Strapi variables required in production. [Railway Strapi setup](https://docs.railway.com/guides/strapi). Vercel environment-variable changes only affect new deployments, so redeploy after changing them. [Vercel environment variables](https://vercel.com/docs/environment-variables)
-
-## 13. Permission test matrix
-
-Create these test users:
-
-```text
-admin@example.com
-manager@example.com
-instructor-a@example.com
-instructor-b@example.com
-student-a@example.com
-student-b@example.com
-```
-
-At minimum verify:
-
-- Logged-out user cannot access lesson content.
-- Student cannot create a course through direct API calls.
-- Student cannot enroll another student.
-- Student cannot complete a lesson before enrolling.
-- Student A cannot view Student B’s attempts or progress.
-- Instructor A cannot edit Instructor B’s course.
-- Instructor cannot create blog posts.
-- Content Manager can manage every course.
-- Content Manager cannot manage users.
-- Content Manager cannot edit another manager’s post if using author ownership.
-- Admin can manage all content.
-- Draft blog is absent from public list and direct public lookup.
-- Quiz taking response contains no correct answers.
-- Submitted score cannot be forged.
-- Duplicate enrollment does not create two records.
-- Duplicate lesson completion does not inflate progress.
-
-Perform these with the browser and with Postman, Bruno, Insomnia, or `curl`. Hiding a button is not an authorization test.
-
-## 14. Video structure
-
-Aim for approximately 9 minutes:
-
-```text
-0:00–0:40  Architecture and roles
-0:40–2:15  Student: enroll, lesson, progress, quiz
-2:15–3:40  Instructor: own course, lesson, quiz, progress
-3:40–4:30  Content Manager: course and blog draft/publish
-4:30–5:20  Admin: stats and user role change
-5:20–6:20  One frontend → Strapi → PostgreSQL data flow
-6:20–7:20  Backend authorization policy
-7:20–8:15  Progress logic line by line
-8:15–9:00  Quiz grading and correct-answer protection
-9:00–9:30  Vercel, Railway, PostgreSQL and environment variables
-```
-
-Do not spend the video slowly clicking through every page. Spend meaningful time showing the backend code because that is where your submission can stand out.
-
-## 15. Commit strategy
-
-Use understandable feature commits:
-
-```text
-chore: scaffold Next.js and Strapi applications
-chore: configure PostgreSQL and deployment
-feat(auth): add registration and secure login session
-feat(rbac): bootstrap roles and authorization policies
-feat(courses): implement ownership-aware course CRUD
-feat(lessons): add ordered lesson management
-feat(enrollment): add student enrollment and my courses
-feat(progress): persist lesson completion and calculate progress
-feat(quiz): add secure auto-grading and attempt history
-feat(blog): add author ownership and draft publishing
-feat(admin): add statistics and role management
-test(rbac): cover role and ownership permissions
-docs: add setup, architecture and completed features
-```
-
-Commit after each genuine working unit. Do not manufacture dozens of meaningless commits at the end.
-
-## Final priorities
-
-If time becomes tight, prioritize in this order:
-
-1. Backend role and ownership enforcement.
-2. Complete Student journey.
-3. Persistent progress.
-4. Secure quiz grading.
-5. Admin role management.
-6. Blog draft/publish.
-7. Deployment reliability.
-8. UI polish.
-
-The four details most likely to distinguish your submission are:
-
-- New users cannot self-register as privileged roles.
-- Instructor ownership is checked by Strapi on every relevant request.
-- Correct quiz answers never reach the Student’s browser.
-- Progress is derived from persistent, unique completion records rather than a client-controlled percentage.
+Show at least one forged/unauthorized API request returning `403` and show
+that a Student quiz response has no `correctOption`. The video should be a
+screen recording in the candidate's own voice.
+
+## Further documentation
+
+- [Architecture](docs/architecture.md)
+- [Engineering decisions](docs/decisions.md)
+- [Permission matrix](docs/permission-matrix.md)
+- [Backend implementation guide](docs/backend-implementation-guide.md)
+- [Frontend experience guide](docs/frontend-experience-guide.md)
+- [Complete role-flow walkthrough](docs/role-flow-walkthrough.md)
+- [Deployment guide](docs/deployment.md)
+
+The code and documentation are intentionally structured so every important
+business rule can be demonstrated and explained during the interview.

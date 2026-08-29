@@ -30,8 +30,8 @@ type LessonProgressService = {
 
 const { NotFoundError, ValidationError } = errors;
 
-const lessonOrderLock = (courseDocumentId: string) =>
-  `lms:lesson-order:${courseDocumentId}`;
+const courseStepOrderLock = (courseDocumentId: string) =>
+  `lms:course-step-order:${courseDocumentId}`;
 
 function lessonDto(lesson: LessonDocument) {
   return {
@@ -56,14 +56,18 @@ export default factories.createCoreService('api::lesson.lesson', ({ strapi }) =>
 
   async createForCourse(courseDocumentId: string, input: LessonCreateInput) {
     const lesson = await strapi.db.transaction(async ({ trx }) => {
-      await acquirePostgresTransactionLock(trx, lessonOrderLock(courseDocumentId));
-      const conflict = await strapi.db.query('api::lesson.lesson').findOne({
+      await acquirePostgresTransactionLock(trx, courseStepOrderLock(courseDocumentId));
+      const lessonConflict = await strapi.db.query('api::lesson.lesson').findOne({
         where: { course: { documentId: courseDocumentId }, position: input.position },
         select: ['id'],
       });
-      if (conflict) {
+      const quizConflict = await strapi.db.query('api::quiz.quiz').findOne({
+        where: { course: { documentId: courseDocumentId }, position: input.position },
+        select: ['id'],
+      });
+      if (lessonConflict || quizConflict) {
         throw new ValidationError(
-          `Lesson position ${input.position} is already used in this course.`
+          `Course step position ${input.position} is already used in this course.`
         );
       }
 
@@ -89,7 +93,7 @@ export default factories.createCoreService('api::lesson.lesson', ({ strapi }) =>
 
       await acquirePostgresTransactionLock(
         trx,
-        lessonOrderLock(current.course.documentId)
+        courseStepOrderLock(current.course.documentId)
       );
       const content = 'content' in input ? input.content : current.content;
       const videoUrl = 'videoUrl' in input ? input.videoUrl : current.videoUrl;
@@ -101,16 +105,26 @@ export default factories.createCoreService('api::lesson.lesson', ({ strapi }) =>
       }
 
       if (input.position !== undefined && input.position !== current.position) {
-        const conflict = await strapi.db.query('api::lesson.lesson').findOne({
+        const lessonConflict = await strapi.db.query('api::lesson.lesson').findOne({
           where: {
             course: { documentId: current.course.documentId },
             position: input.position,
           },
           select: ['documentId'],
         });
-        if (conflict && conflict.documentId !== documentId) {
+        const quizConflict = await strapi.db.query('api::quiz.quiz').findOne({
+          where: {
+            course: { documentId: current.course.documentId },
+            position: input.position,
+          },
+          select: ['documentId'],
+        });
+        if (
+          (lessonConflict && lessonConflict.documentId !== documentId) ||
+          quizConflict
+        ) {
           throw new ValidationError(
-            `Lesson position ${input.position} is already used in this course.`
+            `Course step position ${input.position} is already used in this course.`
           );
         }
       }
@@ -138,7 +152,7 @@ export default factories.createCoreService('api::lesson.lesson', ({ strapi }) =>
       if (!lesson?.course) throw new NotFoundError('Lesson not found.');
       await acquirePostgresTransactionLock(
         trx,
-        lessonOrderLock(lesson.course.documentId)
+        courseStepOrderLock(lesson.course.documentId)
       );
       await strapi.db
         .query('api::lesson-progress.lesson-progress')

@@ -60,16 +60,16 @@ course.
    the existing enrollment instead of duplicating it.
 2. Open **My Courses** at `/learn`. The page calls `GET /api/lms/my-courses` and
    receives only this student's enrollments plus computed progress.
-3. Open a course and then its first incomplete lesson. Strapi checks enrollment
-   before returning lesson content. It unlocks the first lesson and unlocks a
-   later lesson only when all preceding lessons are complete. The UI explains
-   this state, but Strapi also rejects a forged direct request to a locked
-   lesson.
+3. Open a course and then its first incomplete curriculum step. Strapi checks
+   enrollment before returning content. General Lessons and Quizzes share one
+   position order; a later step unlocks only when every preceding step is
+   complete. Strapi rejects forged direct requests to locked Lessons or Quizzes.
 4. Select **Mark lesson complete**. The client calls
    `PUT /api/lms/my-courses/:courseDocumentId/lessons/:lessonDocumentId/complete`.
    Strapi upserts the student's
-   lesson-progress record and calculates `completed lessons / total lessons`.
-   The result persists in PostgreSQL, so refresh does not change it.
+   lesson-progress record and calculates
+   `completed lessons and quizzes / total curriculum steps`. The result
+   persists in PostgreSQL, so refresh does not change it.
 5. Open a quiz. `GET /api/lms/my-courses/:courseDocumentId/quizzes/:quizDocumentId`
    intentionally omits every `correctOption`. On submit,
    `POST /api/lms/my-courses/:courseDocumentId/quizzes/:quizDocumentId/attempts`
@@ -206,7 +206,7 @@ npm run build
   enrollment, persistent progress, answer redaction, grading, draft/publish
   visibility, Admin protection, and cleanup behavior.
 - A separate normal-Node refresh-session API test proves role-less logout
-  revokes the old refresh token. The final count is 21 unit assertions and 13
+  revokes the old refresh token. The final count is 22 unit tests and 13
   main API scenarios, plus this refresh-session scenario.
 - TypeScript compilation and the production Next.js build verify every route and
   the server/client boundaries.

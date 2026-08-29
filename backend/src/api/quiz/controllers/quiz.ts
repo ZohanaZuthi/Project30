@@ -10,7 +10,9 @@ import {
 
 type QuizService = {
   findForCourse(courseDocumentId: string, includeAnswers: boolean): Promise<unknown>;
+  findSummariesForCourse(courseDocumentId: string): Promise<unknown>;
   findOneForCourse(courseDocumentId: string, quizDocumentId: string, includeAnswers: boolean): Promise<unknown>;
+  findOneForStudent(studentId: number, courseDocumentId: string, quizDocumentId: string): Promise<unknown>;
   createForCourse(courseDocumentId: string, input: unknown): Promise<unknown>;
   updateManaged(quizDocumentId: string, input: unknown): Promise<unknown>;
   deleteManaged(quizDocumentId: string): Promise<unknown>;
@@ -42,15 +44,18 @@ export default {
   },
 
   async findForStudent(ctx: Context) {
-    ctx.body = { data: await service().findForCourse(ctx.params.courseDocumentId, false) };
+    ctx.body = {
+      data: await service().findSummariesForCourse(ctx.params.courseDocumentId),
+    };
   },
 
   async findOneForStudent(ctx: Context) {
+    const user = getAuthenticatedUser(ctx);
     ctx.body = {
-      data: await service().findOneForCourse(
+      data: await service().findOneForStudent(
+        user.id,
         ctx.params.courseDocumentId,
-        ctx.params.quizDocumentId,
-        false
+        ctx.params.quizDocumentId
       ),
     };
   },

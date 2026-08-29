@@ -870,6 +870,15 @@ a.learning-lesson-row > b {
   justify-content: center;
   gap: 10px;
   margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+.quiz-step-label {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .attempt-history {
@@ -960,9 +969,70 @@ a.learning-lesson-row > b {
   color: #a43e2a !important;
 }
 
+.curriculum-manager,
 .quiz-manager,
 .course-progress-panel {
   margin-top: 28px;
+}
+
+.curriculum-manager {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: white;
+  padding: 24px;
+}
+
+.curriculum-manager > .section-title-row p:last-child {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.curriculum-step-overview {
+  margin: 22px 0;
+}
+
+.step-type-badge {
+  border-radius: 999px;
+  background: #e8f3ee;
+  color: var(--green-dark);
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.step-type-badge.quiz {
+  background: #fff0d9;
+  color: #8b5311;
+}
+
+.step-type-selector {
+  display: grid;
+  gap: 8px;
+  border-radius: 16px;
+  background: var(--paper);
+  padding: 18px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.step-type-selector select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  padding: 12px;
+  font: inherit;
+}
+
+.step-type-selector small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.curriculum-manager > .lesson-manager {
+  margin-top: 24px;
 }
 
 .managed-quiz-list {

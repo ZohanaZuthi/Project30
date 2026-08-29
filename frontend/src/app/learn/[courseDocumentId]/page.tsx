@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { TextWithLinks } from "@/components/content/text-with-links";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { ProgressMeter } from "@/components/learning/progress-meter";
 import { APP_ROLES } from "@/lib/auth/constants";
@@ -8,24 +9,21 @@ import { requireRole } from "@/lib/dal/auth";
 import {
   getMyCourse,
   getMyQuizAttempts,
-  getStudentQuizzes,
 } from "@/lib/dal/lms";
+import { learningStepHref } from "@/lib/student-learning";
 
 export default async function LearningCoursePage({
   params,
 }: PageProps<"/learn/[courseDocumentId]">) {
   const { courseDocumentId } = await params;
   const user = await requireRole([APP_ROLES.STUDENT]);
-  const [learning, quizzes, attempts] = await Promise.all([
+  const [learning, attempts] = await Promise.all([
     getMyCourse(courseDocumentId),
-    getStudentQuizzes(courseDocumentId),
     getMyQuizAttempts(),
   ]);
   if (!learning) notFound();
   const { course, progress } = learning;
-  const completedById = new Map(
-    progress.lessons?.map((lesson) => [lesson.documentId, lesson]) ?? [],
-  );
+  const steps = progress.steps ?? [];
   const courseAttempts = attempts.filter(
     (attempt) => attempt.quiz?.course?.documentId === courseDocumentId,
   );
@@ -37,12 +35,14 @@ export default async function LearningCoursePage({
           <Link href="/learn">← My courses</Link>
           <p className="eyebrow">Learning path</p>
           <h1>{course.title}</h1>
-          <p>{course.description}</p>
+          <p className="text-with-links">
+            <TextWithLinks text={course.description} />
+          </p>
         </div>
         <ProgressMeter
-          completed={progress.completedLessons}
+          completed={progress.completedSteps}
           percentage={progress.percentage}
-          total={progress.totalLessons}
+          total={progress.totalSteps}
         />
       </div>
       <div className="learning-layout">
@@ -50,54 +50,61 @@ export default async function LearningCoursePage({
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Curriculum</p>
-              <h2>Continue lesson by lesson</h2>
+              <h2>Continue step by step</h2>
             </div>
-            <span className="count-badge">{course.lessons.length} lessons</span>
+            <span className="count-badge">{steps.length} learning steps</span>
           </div>
           <ol className="learning-lesson-list">
-            {course.lessons.map((lesson, index) => {
-              const status = completedById.get(lesson.documentId);
-              const lessonContent = (
+            {steps.map((step, index) => {
+              const stepContent = (
                 <>
                   <span>
-                    {status?.completed
+                    {step.completed
                       ? "✓"
+                      : step.kind === "quiz"
+                        ? "Q"
                       : String(index + 1).padStart(2, "0")}
                   </span>
                   <div>
-                    <strong>{lesson.title}</strong>
+                    <strong>{step.title}</strong>
                     <small>
-                      {status?.completed
-                        ? "Completed"
-                        : status?.locked
-                          ? "Complete the previous lessons first"
-                          : "Ready to learn"}
+                      {step.completed
+                        ? step.kind === "quiz"
+                          ? "Quiz attempted · result saved"
+                          : "Lesson completed"
+                        : step.locked
+                          ? "Complete the previous course step first"
+                          : step.kind === "quiz"
+                            ? "Ready for instant grading"
+                            : "Ready to learn"}
                     </small>
                   </div>
-                  <b className={status?.locked ? "locked-lesson-action" : undefined}>
-                    {status?.locked
+                  <b className={step.locked ? "locked-lesson-action" : undefined}>
+                    {step.locked
                       ? "🔒 Locked"
-                      : status?.completed
+                      : step.completed
                         ? "Review →"
-                        : "Start lesson →"}
+                        : step.kind === "quiz"
+                          ? "Take quiz →"
+                          : "Start lesson →"}
                   </b>
                 </>
               );
               return (
                 <li
                   className={
-                    status?.completed ? "complete" : status?.locked ? "locked" : ""
+                    step.completed ? "complete" : step.locked ? "locked" : ""
                   }
-                  key={lesson.documentId}
+                  key={`${step.kind}-${step.documentId}`}
                 >
-                  {status?.locked ? (
-                    <div className="learning-lesson-row">{lessonContent}</div>
+                  {step.locked ? (
+                    <div className="learning-lesson-row">{stepContent}</div>
                   ) : (
                     <Link
                       className="learning-lesson-row"
-                      href={`/learn/${courseDocumentId}/lessons/${lesson.documentId}`}
+                      href={learningStepHref(courseDocumentId, step)}
                     >
-                      {lessonContent}
+                      {stepContent}
                     </Link>
                   )}
                 </li>
@@ -106,29 +113,6 @@ export default async function LearningCoursePage({
           </ol>
         </section>
         <aside className="learning-sidebar">
-          <section>
-            <p className="eyebrow">Course quizzes</p>
-            <h2>Check your knowledge</h2>
-            {quizzes.length ? (
-              quizzes.map((quiz) => (
-                <Link
-                  className="quiz-link-card"
-                  href={`/learn/${courseDocumentId}/quizzes/${quiz.documentId}`}
-                  key={quiz.documentId}
-                >
-                  <div>
-                    <strong>{quiz.title}</strong>
-                    <small>
-                      {quiz.questions.length} questions · instant grading
-                    </small>
-                  </div>
-                  <span>Start →</span>
-                </Link>
-              ))
-            ) : (
-              <p className="empty-state">No quiz has been added yet.</p>
-            )}
-          </section>
           <section>
             <p className="eyebrow">Recent results</p>
             <h2>Your attempts</h2>

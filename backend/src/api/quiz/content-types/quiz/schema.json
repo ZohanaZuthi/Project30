@@ -18,6 +18,12 @@
       "minLength": 2,
       "maxLength": 180
     },
+    "position": {
+      "type": "integer",
+      "required": true,
+      "min": 1,
+      "default": 1
+    },
     "course": {
       "type": "relation",
       "relation": "manyToOne",

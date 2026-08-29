@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { CourseForm } from "@/components/dashboard/course-form";
+import { CurriculumManager } from "@/components/dashboard/curriculum-manager";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DeleteCourseButton } from "@/components/dashboard/delete-course-button";
-import { LessonManager } from "@/components/dashboard/lesson-manager";
-import { QuizManager } from "@/components/dashboard/quiz-manager";
 import { CourseProgressPanel } from "@/components/dashboard/course-progress-panel";
 import { APP_ROLES, COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
 import { requireRole } from "@/lib/dal/auth";
@@ -48,12 +47,9 @@ export default async function EditCoursePage({
           <DeleteCourseButton documentId={course.documentId} />
         </div>
         <CourseForm course={course} instructors={instructors} />
-        <LessonManager
+        <CurriculumManager
           courseDocumentId={course.documentId}
           initialLessons={lessons}
-        />
-        <QuizManager
-          courseDocumentId={course.documentId}
           initialQuizzes={quizzes}
         />
         <CourseProgressPanel records={progress} />

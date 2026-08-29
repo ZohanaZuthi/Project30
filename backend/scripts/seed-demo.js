@@ -283,11 +283,21 @@ async function seedCourse(strapi, seed, accounts) {
       title: seed.quiz.title,
       course: { documentId: course.documentId },
     },
-    select: ["id"],
+    select: ["documentId"],
   });
-  if (!existingQuiz) {
+  const quizData = {
+    ...seed.quiz,
+    position: seed.lessons.length + 1,
+    course: course.documentId,
+  };
+  if (existingQuiz) {
+    await strapi.documents("api::quiz.quiz").update({
+      documentId: existingQuiz.documentId,
+      data: quizData,
+    });
+  } else {
     await strapi.documents("api::quiz.quiz").create({
-      data: { ...seed.quiz, course: course.documentId },
+      data: quizData,
     });
   }
 

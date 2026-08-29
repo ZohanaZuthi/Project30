@@ -9,9 +9,11 @@ import type { Quiz, QuizResult } from "@/lib/types";
 
 export function QuizTaker({
   courseDocumentId,
+  nextHref,
   quiz,
 }: {
   courseDocumentId: string;
+  nextHref: string;
   quiz: Quiz;
 }) {
   const router = useRouter();
@@ -60,8 +62,8 @@ export function QuizTaker({
         </h2>
         <p>
           {passed
-            ? "You have a strong grasp of this topic."
-            : "Review the lessons and try again when you are ready."}
+            ? "You have a strong grasp of this topic. This course step is now complete."
+            : "Your result is saved and this course step is complete. Review the lessons and retry whenever you want."}
         </p>
         <div>
           <button
@@ -73,6 +75,9 @@ export function QuizTaker({
           </button>
           <Link className="button primary" href="/quiz-attempts">
             View result history
+          </Link>
+          <Link className="button primary" href={nextHref}>
+            Continue course →
           </Link>
         </div>
       </section>

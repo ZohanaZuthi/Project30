@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { TextWithLinks } from "@/components/content/text-with-links";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { EnrollButton } from "@/components/learning/enroll-button";
@@ -30,6 +31,10 @@ export default async function CourseDetailPage({
   ]);
   if (!course) notFound();
   const view = getCoursePresentation(course);
+  const courseSteps = [
+    ...course.lessons.map((lesson) => ({ ...lesson, kind: "lesson" as const })),
+    ...course.quizzes.map((quiz) => ({ ...quiz, kind: "quiz" as const })),
+  ].sort((a, b) => a.position - b.position);
   const enrollment =
     user?.role?.type === APP_ROLES.STUDENT
       ? (await getMyCourses()).find(
@@ -45,11 +50,13 @@ export default async function CourseDetailPage({
           <Link href="/courses">← সব কোর্স</Link>
           <span className="course-detail-category">{view.category}</span>
           <h1>{course.title}</h1>
-          <p>{course.description}</p>
+          <p className="text-with-links">
+            <TextWithLinks text={course.description} />
+          </p>
           <div className="detail-rating">
             <strong>★ {view.rating}</strong>
             <span>{view.learners} learners</span>
-            <span>{course.lessons.length} lessons</span>
+            <span>{courseSteps.length} learning steps</span>
             <span>{view.duration}</span>
           </div>
           <div className="detail-mentor">
@@ -80,7 +87,10 @@ export default async function CourseDetailPage({
             </div>
             <ul>
               <li>✓ {course.lessons.length} structured lessons</li>
-              <li>✓ Auto-graded course quiz</li>
+              <li>
+                ✓ {course.quizzes.length} auto-graded quiz step
+                {course.quizzes.length === 1 ? "" : "s"}
+              </li>
               <li>✓ Persistent progress tracking</li>
               <li>✓ Learn on any device</li>
             </ul>
@@ -108,18 +118,26 @@ export default async function CourseDetailPage({
           <span className="section-kicker">Course curriculum</span>
           <h2>যা যা শিখবেন</h2>
           <ol>
-            {course.lessons.map((lesson, index) => (
-              <li key={lesson.documentId}>
+            {courseSteps.map((step, index) => (
+              <li key={`${step.kind}-${step.documentId}`}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <div>
-                  <strong>{lesson.title}</strong>
+                  <strong>{step.title}</strong>
                   <small>
-                    {index === 0
-                      ? "Video + lesson notes"
-                      : "Lesson notes + practice"}
+                    {step.kind === "quiz"
+                      ? "Auto-graded quiz · result saved"
+                      : index === 0
+                        ? "Video + lesson notes"
+                        : "Lesson notes + resources"}
                   </small>
                 </div>
-                <b>{index === 0 ? "Preview" : "Locked"}</b>
+                <b>
+                  {step.kind === "quiz"
+                    ? "Quiz"
+                    : index === 0
+                      ? "Preview"
+                      : "Locked"}
+                </b>
               </li>
             ))}
           </ol>

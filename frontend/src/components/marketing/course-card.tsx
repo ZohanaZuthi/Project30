@@ -27,7 +27,7 @@ export function CourseCard({ course, index = 0 }: { course: Course; index?: numb
           <span className="course-rating"><span>★ {view.rating}</span><span>({view.learners} learners)</span></span>
           <span className="course-meta-row">
             <span>◷ {view.duration}</span>
-            <span>▤ {course.lessons.length} lessons</span>
+            <span>▤ {course.lessons.length + course.quizzes.length} steps</span>
           </span>
           <span className="course-card-footer">
             <span><small>Enrollment</small><strong>Free</strong></span>

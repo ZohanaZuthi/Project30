@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { ProgressMeter } from "@/components/learning/progress-meter";
-import { summarizeStudentLearning } from "@/lib/student-learning";
+import {
+  learningStepHref,
+  summarizeStudentLearning,
+} from "@/lib/student-learning";
 import type { Enrollment } from "@/lib/types";
 
 function formatDate(value: string | null) {
@@ -28,8 +31,8 @@ export function StudentDashboard({
           <p className="eyebrow">Your learning dashboard</p>
           <h1>Welcome back, {username}.</h1>
           <p>
-            {primaryCourse?.nextLesson
-              ? `Continue ${primaryCourse.enrollment.course.title} from ${primaryCourse.nextLesson.title}.`
+            {primaryCourse?.nextStep
+              ? `Continue ${primaryCourse.enrollment.course.title} from ${primaryCourse.nextStep.title}.`
               : enrollments.length
                 ? "You are caught up. Review a course or take its quiz when you are ready."
                 : "Enroll in your first course to begin tracking real lesson progress."}
@@ -39,8 +42,8 @@ export function StudentDashboard({
               className="button primary"
               href={primaryCourse?.href ?? "/courses"}
             >
-              {primaryCourse?.nextLesson
-                ? "Continue next lesson →"
+              {primaryCourse?.nextStep
+                ? "Continue next step →"
                 : enrollments.length
                   ? "Open my courses →"
                   : "Explore courses →"}
@@ -56,7 +59,7 @@ export function StudentDashboard({
           <span>Overall progress</span>
           <strong>{summary.percentage}%</strong>
           <small>
-            {summary.completedLessons} of {summary.totalLessons} lessons complete
+            {summary.completedSteps} of {summary.totalSteps} course steps complete
           </small>
         </div>
       </section>
@@ -68,9 +71,9 @@ export function StudentDashboard({
           <small>In your learning library</small>
         </article>
         <article>
-          <span>Lessons completed</span>
-          <strong>{summary.completedLessons}</strong>
-          <small>{summary.totalLessons} lessons available</small>
+          <span>Steps completed</span>
+          <strong>{summary.completedSteps}</strong>
+          <small>{summary.totalSteps} lessons and quizzes</small>
         </article>
         <article>
           <span>Last 7 days</span>
@@ -78,12 +81,12 @@ export function StudentDashboard({
           <small>Calculated from saved completion dates</small>
         </article>
         <article>
-          <span>Next lesson</span>
+          <span>Next step</span>
           <strong className="student-next-stat">
-            {summary.nextCourse?.nextLesson?.position ?? "—"}
+            {summary.nextCourse?.nextStep?.position ?? "—"}
           </strong>
           <small>
-            {summary.nextCourse?.nextLesson?.title ?? "Nothing waiting"}
+            {summary.nextCourse?.nextStep?.title ?? "Nothing waiting"}
           </small>
         </article>
       </section>
@@ -112,14 +115,14 @@ export function StudentDashboard({
             </div>
             <div className="student-course-list">
               {summary.courses.map(
-                ({ enrollment, nextLesson, lastCompletedLesson, href, actionLabel }) => (
+                ({ enrollment, nextStep, lastCompletedStep, href, actionLabel }) => (
                   <article key={enrollment.course.documentId}>
                     <div className="student-course-card-heading">
                       <div>
                         <span>{
                           enrollment.progress.percentage === 100
                             ? "Course completed"
-                            : nextLesson
+                            : nextStep
                               ? "Ready to continue"
                               : "Course overview"
                         }</span>
@@ -129,21 +132,21 @@ export function StudentDashboard({
                     </div>
                     <ProgressMeter
                       compact
-                      completed={enrollment.progress.completedLessons}
+                      completed={enrollment.progress.completedSteps}
                       percentage={enrollment.progress.percentage}
-                      total={enrollment.progress.totalLessons}
+                      total={enrollment.progress.totalSteps}
                     />
                     <div className="student-course-checkpoints">
                       <p>
                         <span>Last finished</span>
                         <strong>
-                          {lastCompletedLesson?.title ?? "No lesson completed yet"}
+                          {lastCompletedStep?.title ?? "No step completed yet"}
                         </strong>
                       </p>
                       <p>
                         <span>Up next</span>
                         <strong>
-                          {nextLesson?.title ??
+                          {nextStep?.title ??
                             (enrollment.progress.percentage === 100
                               ? "Course complete"
                               : "Open course overview")}
@@ -166,14 +169,15 @@ export function StudentDashboard({
               <div>
                 {summary.completedActivity.slice(0, 6).map((activity) => (
                   <Link
-                    href={`/learn/${activity.courseDocumentId}/lessons/${activity.lesson.documentId}`}
-                    key={`${activity.courseDocumentId}-${activity.lesson.documentId}`}
+                    href={learningStepHref(activity.courseDocumentId, activity.step)}
+                    key={`${activity.courseDocumentId}-${activity.step.kind}-${activity.step.documentId}`}
                   >
                     <span>✓</span>
                     <div>
-                      <strong>{activity.lesson.title}</strong>
+                      <strong>{activity.step.title}</strong>
                       <small>
-                        {activity.courseTitle} · {formatDate(activity.lesson.completedAt)}
+                        {activity.step.kind === "quiz" ? "Quiz" : "Lesson"} ·{" "}
+                        {activity.courseTitle} · {formatDate(activity.step.completedAt)}
                       </small>
                     </div>
                   </Link>
@@ -183,7 +187,7 @@ export function StudentDashboard({
               <div className="student-no-activity">
                 <span>○</span>
                 <p>
-                  Complete your first lesson and it will be recorded here with
+                  Complete your first lesson or quiz and it will be recorded here with
                   its completion date.
                 </p>
               </div>

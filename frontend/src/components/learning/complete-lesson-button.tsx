@@ -40,7 +40,7 @@ export function CompleteLessonButton({
       setIsComplete(true);
       setMessage(
         result.data.progress.percentage === 100
-          ? "অভিনন্দন! আপনি এই course-এর সব lesson সম্পন্ন করেছেন।"
+          ? "অভিনন্দন! আপনি এই course-এর সব learning step সম্পন্ন করেছেন।"
           : `অভিনন্দন! Lesson সম্পন্ন হয়েছে—course progress এখন ${result.data.progress.percentage}%।`,
       );
       router.refresh();
@@ -64,8 +64,8 @@ export function CompleteLessonButton({
             <strong>অভিনন্দন!</strong>
             <small>
               {nextHref
-                ? "এই lesson শেষ হয়েছে। পরের lesson-এ এগিয়ে যান।"
-                : "আপনি course-এর শেষ lesson-টিও সম্পন্ন করেছেন।"}
+                ? "এই lesson শেষ হয়েছে। পরের learning step-এ এগিয়ে যান।"
+                : "আপনি course-এর শেষ learning step-টিও সম্পন্ন করেছেন।"}
             </small>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function CompleteLessonButton({
           ? "সংরক্ষণ হচ্ছে…"
           : isComplete
             ? nextHref
-              ? "পরের lesson-এ যান →"
+              ? "পরের step-এ যান →"
               : "✓ Lesson সম্পন্ন"
             : "Lesson সম্পন্ন হিসেবে চিহ্নিত করুন"}
       </button>

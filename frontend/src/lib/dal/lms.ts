@@ -63,14 +63,6 @@ export async function getStudentLesson(
   );
 }
 
-export async function getStudentQuizzes(courseDocumentId: string) {
-  return (
-    (await authenticatedData<Quiz[]>(
-      `/api/lms/my-courses/${encodeURIComponent(courseDocumentId)}/quizzes`,
-    )) ?? []
-  );
-}
-
 export async function getStudentQuiz(
   courseDocumentId: string,
   quizDocumentId: string,

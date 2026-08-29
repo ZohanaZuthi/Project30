@@ -44,11 +44,12 @@ authorized requests.
 
 ## ADR-006: Progress is derived
 
-**Decision:** Store one unique completion fact per student and lesson; calculate
-the percentage from current course lessons on every progress read.
+**Decision:** Store one unique completion fact per Student/Lesson and treat any
+valid stored QuizAttempt as completion of that Quiz step. Calculate the
+percentage from the current combined curriculum on every progress read.
 
-**Reason:** A stored percentage becomes stale when lessons are added or removed.
-Derived progress remains explainable and accurate.
+**Reason:** A stored percentage becomes stale when lessons or quizzes are added
+or removed. Derived progress remains explainable and accurate.
 
 ## ADR-007: Quiz answers are server-only
 
@@ -58,7 +59,15 @@ use custom take/submit endpoints and may have multiple immutable attempts.
 **Reason:** Generic content responses could leak answers, and client-computed
 scores are forgeable. Multiple attempts also make stored results useful later.
 
-## ADR-008: URL-based images for this scope
+## ADR-008: Lesson and Quiz share one curriculum order
+
+**Decision:** Keep Lesson and Quiz as specialized Strapi collections, give both
+a course-scoped `position`, and merge them into one ordered learning path.
+
+**Reason:** A course setter can choose a General Lesson or an auto-graded Quiz
+for any step without mixing question/answer fields into the Lesson schema.
+
+## ADR-009: URL-based images for this scope
 
 **Decision:** Store course thumbnails and blog covers as URLs.
 
@@ -66,7 +75,7 @@ scores are forgeable. Multiple attempts also make stored results useful later.
 ephemeral without a volume or object-storage provider. This keeps the deadline
 focused on access control and learning workflows.
 
-## ADR-009: Content Manager blog ownership
+## ADR-010: Content Manager blog ownership
 
 **Decision:** A Content Manager manages posts they authored; an Admin manages
 all posts.

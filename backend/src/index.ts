@@ -203,6 +203,51 @@ async function migrateLegacyAuthenticatedUsers(
   }
 }
 
+async function normalizeQuizStepPositions(strapi: Core.Strapi) {
+  const courses = (await strapi.db.query('api::course.course').findMany({
+    select: ['documentId'],
+  })) as Array<{ documentId: string }>;
+  let moved = 0;
+
+  for (const course of courses) {
+    const [lessons, quizzes] = (await Promise.all([
+      strapi.db.query('api::lesson.lesson').findMany({
+        where: { course: { documentId: course.documentId } },
+        select: ['position'],
+      }),
+      strapi.db.query('api::quiz.quiz').findMany({
+        where: { course: { documentId: course.documentId } },
+        select: ['id', 'position', 'createdAt'],
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      }),
+    ])) as [Array<{ position: number }>, Array<{ id: number; position: number }>];
+
+    const used = new Set(lessons.map(({ position }) => position));
+    let nextPosition = Math.max(0, ...used) + 1;
+    for (const quiz of quizzes) {
+      if (quiz.position >= 1 && !used.has(quiz.position)) {
+        used.add(quiz.position);
+        nextPosition = Math.max(nextPosition, quiz.position + 1);
+        continue;
+      }
+      while (used.has(nextPosition)) nextPosition += 1;
+      await strapi.db.query('api::quiz.quiz').update({
+        where: { id: quiz.id },
+        data: { position: nextPosition },
+      });
+      used.add(nextPosition);
+      nextPosition += 1;
+      moved += 1;
+    }
+  }
+
+  if (moved > 0) {
+    strapi.log.info(
+      `Assigned non-conflicting curriculum positions to ${moved} legacy quiz step(s).`
+    );
+  }
+}
+
 export default {
   register() {},
 
@@ -211,6 +256,7 @@ export default {
     await ensureApplicationPermissions(strapi, roles);
     await makeStudentTheRegistrationDefault(strapi);
     await migrateLegacyAuthenticatedUsers(strapi, roles);
+    await normalizeQuizStepPositions(strapi);
 
     strapi.log.info('LMS application roles and Student registration default are ready.');
   },

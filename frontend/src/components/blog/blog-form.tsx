@@ -108,7 +108,10 @@ export function BlogForm({ post }: { post?: BlogPost }) {
           name="publish"
           type="checkbox"
         />
-        Publish this post publicly
+        <span>
+          Publish this post publicly
+          <small>Leave unchecked to save a private draft and publish later.</small>
+        </span>
       </label>
       {error && (
         <p className="form-error" role="alert">

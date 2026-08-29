@@ -36,10 +36,10 @@ export default async function Home() {
   const isStudent = user?.role?.type === APP_ROLES.STUDENT;
   const nextHref = learning.nextCourse?.href;
   const homeAction = isStudent
-    ? learning.nextCourse?.nextLesson
+    ? learning.nextCourse?.nextStep
       ? {
-          label: "NEXT LESSON",
-          title: learning.nextCourse.nextLesson.title,
+          label: "NEXT STEP",
+          title: learning.nextCourse.nextStep.title,
           detail: learning.nextCourse.enrollment.course.title,
           href: nextHref ?? "/learn",
         }
@@ -74,10 +74,10 @@ export default async function Home() {
     ? learning.nextCourse
       ? {
           kicker: "শেখা চালিয়ে যান",
-          title: "আপনার পরবর্তী lesson\nপ্রস্তুত আছে।",
+          title: "আপনার পরবর্তী step\nপ্রস্তুত আছে।",
           detail: `${learning.nextCourse.enrollment.course.title}—যেখান থেকে থেমেছিলেন, সেখান থেকেই শুরু করুন।`,
           href: learning.nextCourse.href,
-          label: "পরবর্তী lesson-এ যান →",
+          label: "পরবর্তী step-এ যান →",
         }
       : {
           kicker: "আপনার learning space",
@@ -153,7 +153,7 @@ export default async function Home() {
             </i>
             <small>
               {isStudent
-                ? `${learning.completedLessons} of ${learning.totalLessons} lessons complete`
+                ? `${learning.completedSteps} of ${learning.totalSteps} course steps complete`
                 : "Begins at 0% after your first enrollment"}
             </small>
           </Link>

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { TextWithLinks } from "@/components/content/text-with-links";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { CompleteLessonButton } from "@/components/learning/complete-lesson-button";
 import { ProgressMeter } from "@/components/learning/progress-meter";
 import { APP_ROLES } from "@/lib/auth/constants";
 import { requireRole } from "@/lib/dal/auth";
 import { getMyCourse, getMyProgress, getStudentLesson } from "@/lib/dal/lms";
+import { learningStepHref } from "@/lib/student-learning";
 import { getYouTubeEmbedUrl } from "@/lib/video";
 
 export default async function LessonPage({
@@ -20,17 +22,16 @@ export default async function LessonPage({
     getMyProgress(courseDocumentId),
   ]);
   if (!learning || !lesson || !progress) notFound();
-  const currentIndex = learning.course.lessons.findIndex(
-    (item) => item.documentId === lessonDocumentId,
+  const steps = progress.steps ?? [];
+  const currentIndex = steps.findIndex(
+    (item) => item.kind === "lesson" && item.documentId === lessonDocumentId,
   );
   if (currentIndex < 0) notFound();
-  const previous = learning.course.lessons[currentIndex - 1];
-  const next = learning.course.lessons[currentIndex + 1];
-  const progressById = new Map(
-    progress.lessons?.map((item) => [item.documentId, item]) ?? [],
-  );
-  const completed = progressById.get(lessonDocumentId)?.completed ?? false;
-  const nextLocked = next ? (progressById.get(next.documentId)?.locked ?? true) : false;
+  const current = steps[currentIndex];
+  const previous = steps[currentIndex - 1];
+  const next = steps[currentIndex + 1];
+  const completed = current.completed;
+  const nextLocked = next?.locked ?? false;
   const embedUrl = getYouTubeEmbedUrl(lesson.videoUrl);
 
   return (
@@ -39,15 +40,15 @@ export default async function LessonPage({
         <div>
           <Link href={`/learn/${courseDocumentId}`}>← Course overview</Link>
           <p className="eyebrow">
-            Lesson {currentIndex + 1} of {learning.course.lessons.length}
+            Lesson · step {currentIndex + 1} of {steps.length}
           </p>
           <h1>{lesson.title}</h1>
         </div>
         <ProgressMeter
           compact
-          completed={progress.completedLessons}
+          completed={progress.completedSteps}
           percentage={progress.percentage}
-          total={progress.totalLessons}
+          total={progress.totalSteps}
         />
       </div>
       <div className="lesson-workspace">
@@ -75,7 +76,9 @@ export default async function LessonPage({
           {lesson.content && (
             <div className="lesson-copy">
               <span>Lesson notes</span>
-              <p>{lesson.content}</p>
+              <p className="text-with-links">
+                <TextWithLinks text={lesson.content} />
+              </p>
             </div>
           )}
           <CompleteLessonButton
@@ -83,29 +86,23 @@ export default async function LessonPage({
             courseDocumentId={courseDocumentId}
             lessonDocumentId={lessonDocumentId}
             nextHref={
-              next
-                ? `/learn/${courseDocumentId}/lessons/${next.documentId}`
-                : null
+              next ? learningStepHref(courseDocumentId, next) : null
             }
           />
           <nav className="lesson-pagination" aria-label="Lesson navigation">
             {previous ? (
-              <Link
-                href={`/learn/${courseDocumentId}/lessons/${previous.documentId}`}
-              >
+              <Link href={learningStepHref(courseDocumentId, previous)}>
                 ← {previous.title}
               </Link>
             ) : (
               <span />
             )}
             {next && !nextLocked ? (
-              <Link
-                href={`/learn/${courseDocumentId}/lessons/${next.documentId}`}
-              >
+              <Link href={learningStepHref(courseDocumentId, next)}>
                 {next.title} →
               </Link>
             ) : next ? (
-              <span className="locked-pagination">Complete this lesson to continue →</span>
+              <span className="locked-pagination">Complete this lesson to unlock the next step →</span>
             ) : (
               <Link href={`/learn/${courseDocumentId}`}>Finish course →</Link>
             )}
@@ -115,23 +112,22 @@ export default async function LessonPage({
           <p className="eyebrow">Course outline</p>
           <h2>{learning.course.title}</h2>
           <ol>
-            {learning.course.lessons.map((item, index) => {
-              const itemProgress = progressById.get(item.documentId);
+            {steps.map((item, index) => {
               const content = (
                 <>
-                  <span>{itemProgress?.completed ? "✓" : itemProgress?.locked ? "🔒" : index + 1}</span>
+                  <span>{item.completed ? "✓" : item.locked ? "🔒" : item.kind === "quiz" ? "Q" : index + 1}</span>
                   {item.title}
                 </>
               );
               return (
                 <li
-                  className={item.documentId === lessonDocumentId ? "active" : ""}
-                  key={item.documentId}
+                  className={item.kind === "lesson" && item.documentId === lessonDocumentId ? "active" : ""}
+                  key={`${item.kind}-${item.documentId}`}
                 >
-                  {itemProgress?.locked ? (
+                  {item.locked ? (
                     <div className="locked-outline-lesson">{content}</div>
                   ) : (
-                    <Link href={`/learn/${courseDocumentId}/lessons/${item.documentId}`}>
+                    <Link href={learningStepHref(courseDocumentId, item)}>
                       {content}
                     </Link>
                   )}

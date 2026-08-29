@@ -25,12 +25,15 @@ describe('API input validation', () => {
   test('requires a quiz correct option to exist', () => {
     expect(quizCreateSchema.safeParse({
       title: 'Quiz',
+      position: 1,
       questions: [{ prompt: 'Choose one', options: ['A', 'B'], correctOption: 2 }],
     }).success).toBe(false);
   });
 
   test('a quiz submission accepts answers only', () => {
     expect(quizSubmissionSchema.safeParse({ answers: [0], score: 100 }).success).toBe(false);
+    expect(quizSubmissionSchema.safeParse({ answers: [] }).success).toBe(false);
+    expect(quizSubmissionSchema.safeParse({ answers: [0] }).success).toBe(true);
   });
 
   test('validates blog and admin role payloads', () => {

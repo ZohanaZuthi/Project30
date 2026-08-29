@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { lmsMutation } from "@/lib/client-api";
@@ -15,16 +16,19 @@ const emptyQuestion = (): EditableQuestion => ({
 
 function QuizEditor({
   courseDocumentId,
+  defaultPosition,
   quiz,
   onSaved,
   onDeleted,
 }: {
   courseDocumentId: string;
+  defaultPosition: number;
   quiz?: Quiz;
   onSaved: (quiz: Quiz) => void;
   onDeleted?: (documentId: string) => void;
 }) {
   const [title, setTitle] = useState(quiz?.title ?? "");
+  const [position, setPosition] = useState(quiz?.position ?? defaultPosition);
   const [questions, setQuestions] = useState<EditableQuestion[]>(
     quiz?.questions.map((question) => ({
       ...question,
@@ -66,7 +70,7 @@ function QuizEditor({
     setPending(true);
     setError("");
     try {
-      const payload = { title, questions };
+      const payload = { title, position, questions };
       const result = await lmsMutation<Quiz>(
         quiz
           ? `/api/lms/manage/quizzes/${quiz.documentId}`
@@ -77,6 +81,7 @@ function QuizEditor({
       onSaved(result.data);
       if (!quiz) {
         setTitle("");
+        setPosition((current) => current + 1);
         setQuestions([emptyQuestion()]);
       }
     } catch (reason) {
@@ -122,6 +127,16 @@ function QuizEditor({
           onChange={(event) => setTitle(event.target.value)}
           required
           value={title}
+        />
+      </label>
+      <label>
+        Course position
+        <input
+          min={1}
+          onChange={(event) => setPosition(Number(event.target.value))}
+          required
+          type="number"
+          value={position}
         />
       </label>
       <div className="question-editor-list">
@@ -261,17 +276,20 @@ function QuizEditor({
 export function QuizManager({
   courseDocumentId,
   initialQuizzes,
+  nextPosition,
 }: {
   courseDocumentId: string;
   initialQuizzes: Quiz[];
+  nextPosition: number;
 }) {
+  const router = useRouter();
   const [quizzes, setQuizzes] = useState(initialQuizzes);
   return (
     <section className="lesson-manager quiz-manager">
       <div className="section-title-row">
         <div>
           <p className="eyebrow">Assessment builder</p>
-          <h2>Auto-graded quizzes</h2>
+          <h2>Auto-graded quiz steps</h2>
         </div>
         <span className="count-badge">{quizzes.length} total</span>
       </div>
@@ -282,24 +300,29 @@ export function QuizManager({
               <summary>
                 <div>
                   <strong>{quiz.title}</strong>
-                  <small>{quiz.questions.length} questions</small>
+                  <small>
+                    Step {quiz.position} · {quiz.questions.length} questions
+                  </small>
                 </div>
                 <span>Edit quiz</span>
               </summary>
               <QuizEditor
                 courseDocumentId={courseDocumentId}
-                onDeleted={(documentId) =>
+                defaultPosition={quiz.position}
+                onDeleted={(documentId) => {
                   setQuizzes((current) =>
                     current.filter((item) => item.documentId !== documentId),
-                  )
-                }
-                onSaved={(saved) =>
+                  );
+                  router.refresh();
+                }}
+                onSaved={(saved) => {
                   setQuizzes((current) =>
                     current.map((item) =>
                       item.documentId === saved.documentId ? saved : item,
                     ),
-                  )
-                }
+                  );
+                  router.refresh();
+                }}
                 quiz={quiz}
               />
             </details>
@@ -314,11 +337,16 @@ export function QuizManager({
         <h3>Create a quiz</h3>
         <p>
           Choose the correct option here. Students never receive that field from
-          the API.
+          the API. Choose any unused course position to place this required quiz
+          before, between, or after general lessons.
         </p>
         <QuizEditor
           courseDocumentId={courseDocumentId}
-          onSaved={(saved) => setQuizzes((current) => [...current, saved])}
+          defaultPosition={nextPosition}
+          onSaved={(saved) => {
+            setQuizzes((current) => [...current, saved]);
+            router.refresh();
+          }}
         />
       </div>
     </section>

@@ -74,7 +74,11 @@ export function CourseForm({
         />
       </label>
       <label>
-        Description
+        Description and resources
+        <span className="field-help">
+          Add overview text and full http(s) resource links. Links become
+          clickable for students.
+        </span>
         <textarea
           name="description"
           defaultValue={course?.description}
@@ -112,7 +116,10 @@ export function CourseForm({
           type="checkbox"
           defaultChecked={Boolean(course?.publishedAt)}
         />
-        Publish this course so it appears in the public catalog
+        <span>
+          Publish this course so it appears in the public catalog
+          <small>Leave unchecked to save it as a private draft for later.</small>
+        </span>
       </label>
       {error && (
         <p className="form-error" role="alert">

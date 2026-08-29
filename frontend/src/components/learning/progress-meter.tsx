@@ -24,7 +24,7 @@ export function ProgressMeter({
         <b style={{ "--progress": `${safePercentage}%` } as CSSProperties} />
       </i>
       <small>
-        {completed} of {total} lessons complete
+        {completed} of {total} course steps complete
       </small>
     </div>
   );

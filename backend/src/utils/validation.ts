@@ -63,6 +63,7 @@ export const quizQuestionSchema = z
 
 const quizFields = z.object({
   title: z.string().trim().min(2).max(180),
+  position: z.coerce.number().int().min(1).max(10_000),
   questions: z.array(quizQuestionSchema).min(1).max(100),
 });
 
@@ -74,7 +75,7 @@ export const quizUpdateSchema = quizFields
 
 export const quizSubmissionSchema = z
   .object({
-    answers: z.array(z.number().int().min(0)).max(100),
+    answers: z.array(z.number().int().min(0)).min(1).max(100),
   })
   .strict();
 

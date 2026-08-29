@@ -27,7 +27,7 @@ export default async function ManageCoursesPage() {
                 <span className={course.publishedAt ? "status published" : "status draft"}>
                   {course.publishedAt ? "Published" : "Draft"}
                 </span>
-                <span>{course.lessons.length} lesson{course.lessons.length === 1 ? "" : "s"}</span>
+                <span>{course.lessons.length + course.quizzes.length} course steps</span>
               </div>
               <h2>{course.title}</h2>
               <p>{course.description}</p>

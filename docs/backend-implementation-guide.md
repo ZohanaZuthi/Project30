@@ -190,21 +190,21 @@ Completion works the same way with:
 student:<numeric-user-id>:lesson:<lesson-document-id>
 ```
 
-Progress stores completion facts, not a percentage. It is derived on every
-read:
+Progress stores completion facts and QuizAttempts, not a percentage. It is
+derived from the combined Lesson/Quiz curriculum on every read:
 
 ```ts
-percentage = totalLessons === 0
+percentage = totalSteps === 0
   ? 0
-  : Math.round((completedLessons / totalLessons) * 100)
+  : Math.round((completedSteps / totalSteps) * 100)
 ```
 
-This stays accurate when a course later gains or loses lessons.
+This stays accurate when a course later gains or loses lessons or quizzes.
 
-The response also marks each lesson as `locked` or unlocked. The first lesson
-is available; a later lesson becomes available only after every preceding
-lesson is complete. Both lesson viewing and completion call the same backend
-guard, so manually changing the URL cannot skip the sequence.
+The response marks each combined step as `locked` or unlocked. The first step
+is available; a later Lesson or Quiz becomes available only after every
+preceding step is complete. Lesson view/complete and Quiz view/submit call the
+same progress guard, so manually changing the URL cannot skip the sequence.
 
 ### Quizzes and attempts
 
@@ -222,6 +222,7 @@ Management create body:
 ```json
 {
   "title": "Security quiz",
+  "position": 2,
   "questions": [
     {
       "prompt": "Where must authorization be enforced?",
@@ -232,17 +233,22 @@ Management create body:
 }
 ```
 
-The student response mapper deliberately omits `correctOption`, even though the
+Lesson and Quiz positions share one course-scoped namespace. PostgreSQL
+serializes writes with the same advisory lock, so a Lesson and Quiz cannot both
+claim position 2.
+
+The Student response mapper deliberately omits `correctOption`, even though the
 service needs it internally. A submission accepts only answers:
 
 ```json
 { "answers": [1] }
 ```
 
-For every question, `gradeQuiz` validates the selected index, compares it to
-the stored correct index, and derives `score`, `total`, and `percentage`. The
-client cannot submit those fields. Each result is persisted as an immutable
-QuizAttempt and can be read later.
+The submit service requires exactly one valid option index for every question.
+It compares those indexes to the stored correct indexes and derives `score`,
+`total`, and `percentage`. The client cannot submit those fields. Each result
+is persisted as an immutable QuizAttempt and can be read later. Any valid full
+attempt completes that curriculum step; the brief does not define a pass mark.
 
 ### Blog
 

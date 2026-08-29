@@ -29,9 +29,9 @@ export function CourseProgressPanel({
               </div>
               <ProgressMeter
                 compact
-                completed={progress.completedLessons}
+                completed={progress.completedSteps}
                 percentage={progress.percentage}
-                total={progress.totalLessons}
+                total={progress.totalSteps}
               />
             </article>
           ))}

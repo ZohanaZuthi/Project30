@@ -21,6 +21,7 @@ type CourseDocument = {
   thumbnailUrl?: string | null;
   instructor?: { username?: string } | null;
   lessons?: Array<{ documentId: string; title: string; position: number }>;
+  quizzes?: Array<{ documentId: string; title: string; position: number }>;
 };
 
 type LessonProgressService = {
@@ -40,6 +41,11 @@ function courseDto(course: CourseDocument) {
     lessons: (course.lessons ?? [])
       .map(({ documentId, title, position }) => ({ documentId, title, position }))
       .sort((a, b) => a.position - b.position),
+    quizzes: (course.quizzes ?? []).map(({ documentId, title, position }) => ({
+      documentId,
+      title,
+      position,
+    })).sort((a, b) => a.position - b.position),
   };
 }
 
@@ -51,6 +57,10 @@ async function findPublishedCourse(strapi: Core.Strapi, documentId: string) {
     populate: {
       instructor: { fields: ['username'] },
       lessons: {
+        fields: ['documentId', 'title', 'position'],
+        sort: ['position:asc', 'createdAt:asc'],
+      },
+      quizzes: {
         fields: ['documentId', 'title', 'position'],
         sort: ['position:asc', 'createdAt:asc'],
       },

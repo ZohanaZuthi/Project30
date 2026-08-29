@@ -107,7 +107,7 @@ export default async function AdminPage({
               <div>
                 <strong>{course.title}</strong>
                 <small>
-                  {course.lessons.length} lessons ·{" "}
+                  {course.lessons.length + course.quizzes.length} steps ·{" "}
                   {course.instructor?.username ?? "Unassigned"}
                 </small>
               </div>

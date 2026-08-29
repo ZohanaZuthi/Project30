@@ -41,9 +41,10 @@ server-generated key to make enrollment idempotent.
 A Student must be enrolled before lesson content or a completion mutation is
 allowed. `studentId:lessonDocumentId` is unique, so repeated completion calls do
 not inflate progress. Percentages are derived from completion facts rather than
-trusted from the browser. The first lesson is unlocked; every later lesson
-requires all earlier lessons to be complete. The backend enforces this rule for
-both reads and completion writes, not only in the interface.
+trusted from the browser. General Lessons and Quizzes share one ordered course
+position. The first curriculum step is unlocked; every later step requires all
+earlier steps to be complete. The backend enforces this rule for lesson reads,
+completion writes, quiz reads, and quiz submissions—not only in the interface.
 
 ### Quiz security
 
