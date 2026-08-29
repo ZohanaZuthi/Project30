@@ -19,12 +19,6 @@ export default {
       config: { policies: ['global::is-admin'] },
     },
     {
-      method: 'DELETE',
-      path: '/lms/admin/users/:userDocumentId',
-      handler: 'api::platform.platform.deleteUser',
-      config: { policies: ['global::is-admin'] },
-    },
-    {
       method: 'GET',
       path: '/lms/admin/stats',
       handler: 'api::platform.platform.stats',

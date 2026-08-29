@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { AuthForm } from "@/components/auth/auth-form";
 
-export const metadata: Metadata = { title: "Create account" };
+export const metadata: Metadata = { title: "ফ্রি account তৈরি করুন" };
 
 export default function RegisterPage() {
   return (
@@ -15,11 +15,14 @@ export default function RegisterPage() {
           <span>Project30 Academy</span>
         </Link>
         <div className="auth-heading">
-          <p className="eyebrow">Start learning</p>
-          <h1>Create your account.</h1>
-          <p>Public registration securely creates a Student account. Privileged roles are assigned only by an Admin.</p>
+          <p className="eyebrow">আজই শেখা শুরু করুন</p>
+          <h1>ফ্রি Student account খুলুন।</h1>
+          <p>
+            এক মিনিটেই account তৈরি করুন। আপনার course, lesson progress এবং
+            quiz result নিরাপদে সংরক্ষিত থাকবে।
+          </p>
         </div>
-        <Suspense fallback={<p>Loading form…</p>}>
+        <Suspense fallback={<p>ফর্ম প্রস্তুত হচ্ছে…</p>}>
           <AuthForm mode="register" />
         </Suspense>
       </section>

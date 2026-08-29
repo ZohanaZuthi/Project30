@@ -390,7 +390,7 @@
 
 .floating-progress-card b {
   display: block;
-  width: 72%;
+  width: var(--home-progress, 0%);
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--academy-brand), #4fbc9e);
@@ -550,6 +550,17 @@
   box-shadow: 0 20px 44px rgba(18, 26, 47, 0.11);
 }
 
+.catalog-card:focus-within {
+  border-color: var(--academy-brand);
+  box-shadow: 0 0 0 4px rgba(20, 107, 92, 0.12), 0 20px 44px rgba(18, 26, 47, 0.11);
+}
+
+.catalog-card-link {
+  display: block;
+  height: 100%;
+  color: inherit;
+}
+
 .catalog-card-media {
   position: relative;
   display: block;
@@ -609,6 +620,7 @@
 }
 
 .catalog-card-body {
+  display: block;
   padding: 19px;
 }
 
@@ -629,6 +641,7 @@
 }
 
 .course-mentor {
+  display: block;
   margin-bottom: 11px;
   color: var(--academy-muted);
   font-size: 11px;
@@ -666,7 +679,7 @@
   margin-top: 17px;
 }
 
-.course-card-footer div {
+.course-card-footer > span {
   display: grid;
   gap: 1px;
 }
@@ -681,7 +694,7 @@
   font-size: 18px;
 }
 
-.course-card-footer > a {
+.course-card-footer > b {
   border-radius: 8px;
   background: var(--academy-mint);
   color: var(--academy-brand-dark);
@@ -904,7 +917,7 @@
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.7fr repeat(3, 0.7fr);
+  grid-template-columns: 1.7fr repeat(2, 0.7fr);
   gap: 54px;
   padding-bottom: 50px;
 }
@@ -1345,10 +1358,6 @@
 
   .footer-grid {
     grid-template-columns: 1.4fr 1fr 1fr;
-  }
-
-  .footer-grid > div:last-child {
-    grid-column: 2;
   }
 
   .course-detail-hero {

@@ -61,15 +61,19 @@ course.
 2. Open **My Courses** at `/learn`. The page calls `GET /api/lms/my-courses` and
    receives only this student's enrollments plus computed progress.
 3. Open a course and then its first incomplete lesson. Strapi checks enrollment
-   before returning lesson content. The UI orders lessons by `position` and
-   supplies previous/next navigation.
+   before returning lesson content. It unlocks the first lesson and unlocks a
+   later lesson only when all preceding lessons are complete. The UI explains
+   this state, but Strapi also rejects a forged direct request to a locked
+   lesson.
 4. Select **Mark lesson complete**. The client calls
-   `POST /api/lms/lessons/:id/complete`. Strapi upserts the student's
+   `PUT /api/lms/my-courses/:courseDocumentId/lessons/:lessonDocumentId/complete`.
+   Strapi upserts the student's
    lesson-progress record and calculates `completed lessons / total lessons`.
    The result persists in PostgreSQL, so refresh does not change it.
-5. Open a quiz. `GET /api/lms/quizzes/:id/take` intentionally omits every
-   `correctOption`. On submit, `POST /api/lms/quizzes/:id/submit` sends only the
-   selected option indexes. Strapi loads the private answers, compares by
+5. Open a quiz. `GET /api/lms/my-courses/:courseDocumentId/quizzes/:quizDocumentId`
+   intentionally omits every `correctOption`. On submit,
+   `POST /api/lms/my-courses/:courseDocumentId/quizzes/:quizDocumentId/attempts`
+   sends only the selected option indexes. Strapi loads the private answers, compares by
    question position, calculates the score, and stores a quiz attempt.
 6. Open `/quiz-attempts` to show the stored result later.
 
@@ -92,7 +96,9 @@ Log in as `instructor@project30.local` and use the dashboard.
 
 1. Create a course. The backend always assigns the authenticated Instructor as
    owner; a forged instructor identifier is not trusted.
-2. Add, reorder, edit, or delete lessons on that course.
+2. Add, reorder, edit, or delete lessons on that course. Positions are unique
+   per course, concurrent order writes are serialized in PostgreSQL, and lesson
+   deletion transactionally removes dependent progress rows.
 3. Create and edit an MCQ quiz. Each question must have at least two non-empty
    options and a valid correct-option index.
 4. Open student progress for the course. The response contains enrollments only
@@ -108,7 +114,7 @@ Key code to show:
 - `frontend/src/components/dashboard/course-form.tsx`
 - `frontend/src/components/dashboard/quiz-manager.tsx`
 - `frontend/src/components/dashboard/course-progress-panel.tsx`
-- `backend/src/policies/is-course-owner-or-privileged.ts`
+- `backend/src/policies/can-manage-course.ts`
 - `backend/src/api/course/services/course.ts`
 
 ## Content Manager and blog flow
@@ -139,24 +145,32 @@ Key code to show:
 
 Log in as `admin@project30.local` and open `/admin`.
 
-1. Show live counts for users by role, courses, lessons, enrollments, quizzes,
-   attempts, and blog posts.
+1. Show live counts for users by role, unassigned users, courses, lessons,
+   enrollments, quizzes, attempts, and blog posts. The user table is paginated;
+   its total comes directly from the database rather than the visible page.
 2. Change a user's application role, then refresh or log in as that user to show
    the new workspace.
 3. Block and unblock a user. A blocked user cannot establish a new session.
 4. Show access to all courses and blog posts regardless of owner.
 
-The role selector calls `PATCH /api/lms/admin/users/:id/role`; blocking calls
+The role selector calls `PATCH /api/lms/admin/users/:id/role`; choosing **No
+role** creates an explicit unassigned state. That user can still sign in and see
+the account-status page but has no LMS permissions. Blocking calls
 `PATCH /api/lms/admin/users/:id/status`. Strapi validates allowed role types and
-protects the last active Admin from deletion, blocking, or demotion so the
-platform cannot be permanently locked out.
+requires another active Admin before an Admin can be blocked or demoted.
+Blocked Admins do not count toward this safety check.
+
+Permanent deletion is intentionally absent. **No role** removes LMS authority
+without destroying the account's history; **Block** suspends login. Demoting or
+blocking an Admin runs inside a database transaction protected by a PostgreSQL
+advisory lock, so concurrent requests cannot remove the final active Admin.
 
 Key code to show:
 
 - `frontend/src/components/admin/user-manager.tsx`
-- `backend/src/api/admin/controllers/admin.ts`
-- `backend/src/api/admin/services/admin.ts`
-- `backend/src/policies/has-role.ts`
+- `backend/src/api/platform/controllers/platform.ts`
+- `backend/src/api/platform/services/platform.ts`
+- `backend/src/policies/is-admin.ts`
 
 ## One data flow to draw in the video
 
@@ -187,10 +201,13 @@ npm run build
 ```
 
 - Unit tests cover pure authorization and quiz-scoring edge cases quickly.
-- Supertest API tests boot a real Strapi instance against an isolated PostgreSQL
+- Supertest API tests boot a real Strapi instance against an isolated SQLite
   test database and prove authentication, `403` ownership boundaries,
   enrollment, persistent progress, answer redaction, grading, draft/publish
   visibility, Admin protection, and cleanup behavior.
+- A separate normal-Node refresh-session API test proves role-less logout
+  revokes the old refresh token. The final count is 21 unit assertions and 13
+  main API scenarios, plus this refresh-session scenario.
 - TypeScript compilation and the production Next.js build verify every route and
   the server/client boundaries.
 - Manual browser walkthroughs verify cookie handling, navigation, pending/error

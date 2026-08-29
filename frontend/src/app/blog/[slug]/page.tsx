@@ -30,18 +30,22 @@ export default async function BlogPostPage({
       <SiteHeader />
       <article className="article-page">
         <header>
-          <Link href="/blog">← সব লেখা</Link>
-          <span className="section-kicker">Project30 journal</span>
-          <h1>{post.title}</h1>
-          <div>
-            <span>By {post.author?.username ?? "Project30 team"}</span>
-            <span>
-              {post.publishedAt
-                ? new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(
-                    new Date(post.publishedAt),
-                  )
-                : ""}
-            </span>
+          <div className="article-header-navigation">
+            <Link href="/blog">← সব লেখা</Link>
+            <span className="section-kicker">Project30 journal</span>
+          </div>
+          <div className="article-heading">
+            <h1>{post.title}</h1>
+            <div className="article-meta">
+              <span>By {post.author?.username ?? "Project30 team"}</span>
+              <span>
+                {post.publishedAt
+                  ? new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(
+                      new Date(post.publishedAt),
+                    )
+                  : ""}
+              </span>
+            </div>
           </div>
         </header>
         <div className="article-cover">

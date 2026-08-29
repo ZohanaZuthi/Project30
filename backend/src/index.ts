@@ -7,6 +7,10 @@ type RoleRecord = {
   name: string;
   type: string;
 };
+type PermissionRecord = {
+  id: number;
+  action: string;
+};
 const ROLE_SEEDS = [
   {
     name: 'Student',
@@ -85,7 +89,6 @@ const PERMISSIONS_BY_ROLE: Record<string, readonly string[]> = {
     'api::platform.platform.findUsers',
     'api::platform.platform.updateRole',
     'api::platform.platform.updateStatus',
-    'api::platform.platform.deleteUser',
     'api::platform.platform.stats',
   ],
 };
@@ -141,10 +144,25 @@ async function ensureApplicationPermissions(
   for (const [roleType, actions] of Object.entries(PERMISSIONS_BY_ROLE)) {
     const role = roles.get(roleType);
     if (!role) continue;
+    const allowedActions = new Set(actions);
+    const existingPermissions = (await permissionQuery.findMany({
+      where: { role: { id: role.id } },
+      select: ['id', 'action'],
+    })) as PermissionRecord[];
+
+    for (const permission of existingPermissions) {
+      if (
+        permission.action.startsWith('api::') &&
+        !allowedActions.has(permission.action as (typeof actions)[number])
+      ) {
+        await permissionQuery.delete({ where: { id: permission.id } });
+      }
+    }
+
     for (const action of actions) {
-      const existing = await permissionQuery.findOne({
-        where: { role: { id: role.id }, action },
-      });
+      const existing = existingPermissions.some(
+        (permission) => permission.action === action
+      );
       if (!existing) {
         await permissionQuery.create({ data: { role: role.id, action } });
       }

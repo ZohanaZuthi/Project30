@@ -7,6 +7,7 @@ import { APP_ROLES } from "@/lib/auth/constants";
 import { getCoursePresentation } from "@/lib/course-presentation";
 import { requireRole } from "@/lib/dal/auth";
 import { getMyCourses } from "@/lib/dal/lms";
+import { getCourseLearningStatus } from "@/lib/student-learning";
 
 export default async function MyCoursesPage() {
   const user = await requireRole([APP_ROLES.STUDENT]);
@@ -26,8 +27,10 @@ export default async function MyCoursesPage() {
       </div>
       {enrollments.length ? (
         <div className="learning-course-grid">
-          {enrollments.map(({ course, progress, enrolledAt }, index) => {
+          {enrollments.map((enrollment, index) => {
+            const { course, progress, enrolledAt } = enrollment;
             const view = getCoursePresentation(course, index);
+            const learningStatus = getCourseLearningStatus(enrollment);
             return (
               <article className="learning-course-card" key={course.documentId}>
                 <div className="learning-card-image">
@@ -53,13 +56,20 @@ export default async function MyCoursesPage() {
                     percentage={progress.percentage}
                     total={progress.totalLessons}
                   />
+                  <p className="learning-card-next">
+                    <span>Up next</span>
+                    <strong>
+                      {learningStatus.nextLesson?.title ??
+                        (progress.percentage === 100
+                          ? "Course completed"
+                          : "Open course overview")}
+                    </strong>
+                  </p>
                   <Link
                     className="button primary"
-                    href={`/learn/${course.documentId}`}
+                    href={learningStatus.href}
                   >
-                    {progress.percentage > 0
-                      ? "Continue learning →"
-                      : "Start course →"}
+                    {learningStatus.actionLabel}
                   </Link>
                 </div>
               </article>

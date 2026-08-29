@@ -26,6 +26,10 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   'users-permissions': {
     config: {
       jwtManagement: 'refresh',
+      // Refresh mode gets token lifetimes from `sessions`. Leaving Strapi's
+      // legacy jwt.expiresIn default enabled passes a signing-only option into
+      // SessionManager verification in 5.52.2 and makes valid logins fail.
+      jwt: null,
       register: {
         allowedFields: [],
       },

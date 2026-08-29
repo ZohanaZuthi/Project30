@@ -57,11 +57,8 @@ export default async function LearningCoursePage({
           <ol className="learning-lesson-list">
             {course.lessons.map((lesson, index) => {
               const status = completedById.get(lesson.documentId);
-              return (
-                <li
-                  className={status?.completed ? "complete" : ""}
-                  key={lesson.documentId}
-                >
+              const lessonContent = (
+                <>
                   <span>
                     {status?.completed
                       ? "✓"
@@ -72,19 +69,37 @@ export default async function LearningCoursePage({
                     <small>
                       {status?.completed
                         ? "Completed"
-                        : index === 0 ||
-                            completedById.get(
-                              course.lessons[index - 1]?.documentId,
-                            )?.completed
-                          ? "Ready to learn"
-                          : "Available anytime"}
+                        : status?.locked
+                          ? "Complete the previous lessons first"
+                          : "Ready to learn"}
                     </small>
                   </div>
-                  <Link
-                    href={`/learn/${courseDocumentId}/lessons/${lesson.documentId}`}
-                  >
-                    {status?.completed ? "Review" : "Open"} →
-                  </Link>
+                  <b className={status?.locked ? "locked-lesson-action" : undefined}>
+                    {status?.locked
+                      ? "🔒 Locked"
+                      : status?.completed
+                        ? "Review →"
+                        : "Start lesson →"}
+                  </b>
+                </>
+              );
+              return (
+                <li
+                  className={
+                    status?.completed ? "complete" : status?.locked ? "locked" : ""
+                  }
+                  key={lesson.documentId}
+                >
+                  {status?.locked ? (
+                    <div className="learning-lesson-row">{lessonContent}</div>
+                  ) : (
+                    <Link
+                      className="learning-lesson-row"
+                      href={`/learn/${courseDocumentId}/lessons/${lesson.documentId}`}
+                    >
+                      {lessonContent}
+                    </Link>
+                  )}
                 </li>
               );
             })}

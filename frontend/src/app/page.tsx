@@ -1,10 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { CourseCard } from "@/components/marketing/course-card";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { APP_ROLES } from "@/lib/auth/constants";
+import { getCurrentUser } from "@/lib/dal/auth";
+import { getMyCourses } from "@/lib/dal/lms";
 import { getPublishedCourses } from "@/lib/dal/public-courses";
+import { summarizeStudentLearning } from "@/lib/student-learning";
 
 const categories = [
   ["⌘", "Web Development", "Build modern products"],
@@ -20,7 +25,82 @@ const outcomes = [
 ] as const;
 
 export default async function Home() {
-  const courses = (await getPublishedCourses()).slice(0, 4);
+  const [publishedCourses, user] = await Promise.all([
+    getPublishedCourses(),
+    getCurrentUser().catch(() => null),
+  ]);
+  const courses = publishedCourses.slice(0, 4);
+  const enrollments =
+    user?.role?.type === APP_ROLES.STUDENT ? await getMyCourses() : [];
+  const learning = summarizeStudentLearning(enrollments);
+  const isStudent = user?.role?.type === APP_ROLES.STUDENT;
+  const nextHref = learning.nextCourse?.href;
+  const homeAction = isStudent
+    ? learning.nextCourse?.nextLesson
+      ? {
+          label: "NEXT LESSON",
+          title: learning.nextCourse.nextLesson.title,
+          detail: learning.nextCourse.enrollment.course.title,
+          href: nextHref ?? "/learn",
+        }
+      : enrollments.length > 0
+        ? {
+            label: "LEARNING LIBRARY",
+            title: "You are all caught up",
+            detail: "Review a course or take a quiz",
+            href: "/learn",
+          }
+        : {
+            label: "START HERE",
+            title: "Choose your first course",
+            detail: "Your account currently has zero progress",
+            href: "/courses",
+          }
+    : user
+      ? {
+          label: "STAFF WORKSPACE",
+          title: "Manage the learning platform",
+          detail: user.role?.name ?? "Account access pending",
+          href: user.role ? "/dashboard" : "/no-role",
+        }
+      : {
+          label: "START FREE",
+          title: "Choose your first course",
+          detail: "Create an account to save your progress",
+          href: "/register",
+        };
+  const homeProgress = isStudent ? learning.percentage : 0;
+  const finalAction = isStudent
+    ? learning.nextCourse
+      ? {
+          kicker: "শেখা চালিয়ে যান",
+          title: "আপনার পরবর্তী lesson\nপ্রস্তুত আছে।",
+          detail: `${learning.nextCourse.enrollment.course.title}—যেখান থেকে থেমেছিলেন, সেখান থেকেই শুরু করুন।`,
+          href: learning.nextCourse.href,
+          label: "পরবর্তী lesson-এ যান →",
+        }
+      : {
+          kicker: "আপনার learning space",
+          title: "নতুন কিছু\nশেখার সময়।",
+          detail: "নিজের course review করুন অথবা নতুন একটি practical course বেছে নিন।",
+          href: "/learn",
+          label: "আমার কোর্স দেখুন →",
+        }
+    : user
+      ? {
+          kicker: "আপনার workspace",
+          title: "Platform-এর কাজ\nএগিয়ে নিন।",
+          detail: "নিজের role অনুযায়ী course, content অথবা platform পরিচালনা করুন।",
+          href: user.role ? "/dashboard" : "/no-role",
+          label: "Workspace খুলুন →",
+        }
+      : {
+          kicker: "আজই শেখা শুরু করুন",
+          title: "আপনার পরবর্তী skill\nমাত্র এক ক্লিক দূরে।",
+          detail: "Free Student account খুলুন এবং নিজের progress track করুন।",
+          href: "/register",
+          label: "ফ্রি account তৈরি করুন →",
+        };
 
   return (
     <main className="marketing-page">
@@ -47,11 +127,36 @@ export default async function Home() {
               src="https://images.pexels.com/photos/4492194/pexels-photo-4492194.jpeg?auto=compress&cs=tinysrgb&w=1400"
               alt="Student attending an online lesson and taking notes"
               fill
+              priority
               sizes="(max-width: 900px) 100vw, 48vw"
             />
           </div>
-          <div className="floating-live-card"><span>● LIVE</span><strong>Next class today</strong><small>8:30 PM · Product Design</small></div>
-          <div className="floating-progress-card"><div><span>Weekly progress</span><strong>72%</strong></div><i><b /></i><small>Keep going—2 lessons left</small></div>
+          <Link className="floating-live-card" href={homeAction.href}>
+            <span>{homeAction.label}</span>
+            <strong>{homeAction.title}</strong>
+            <small>{homeAction.detail}</small>
+          </Link>
+          <Link
+            className="floating-progress-card"
+            href={isStudent ? "/dashboard" : homeAction.href}
+          >
+            <div>
+              <span>{isStudent ? "Your overall progress" : "Progress tracking"}</span>
+              <strong>{isStudent ? `${homeProgress}%` : "Ready"}</strong>
+            </div>
+            <i>
+              <b
+                style={
+                  { "--home-progress": `${homeProgress}%` } as CSSProperties
+                }
+              />
+            </i>
+            <small>
+              {isStudent
+                ? `${learning.completedLessons} of ${learning.totalLessons} lessons complete`
+                : "Begins at 0% after your first enrollment"}
+            </small>
+          </Link>
         </div>
       </section>
 
@@ -92,7 +197,19 @@ export default async function Home() {
         <div className="outcome-list">{outcomes.map(([number, title, description]) => <article key={number}><span>{number}</span><div><h3>{title}</h3><p>{description}</p></div></article>)}</div>
       </section>
 
-      <section className="final-cta"><span>আজই শেখা শুরু করুন</span><h2>আপনার পরবর্তী skill<br />মাত্র এক ক্লিক দূরে।</h2><p>Free Student account খুলুন এবং নিজের progress track করুন।</p><Link href="/register">ফ্রি account তৈরি করুন →</Link></section>
+      <section className="final-cta">
+        <span>{finalAction.kicker}</span>
+        <h2>
+          {finalAction.title.split("\n").map((line, index) => (
+            <span key={line}>
+              {index > 0 && <br />}
+              {line}
+            </span>
+          ))}
+        </h2>
+        <p>{finalAction.detail}</p>
+        <Link href={finalAction.href}>{finalAction.label}</Link>
+      </section>
       <SiteFooter />
     </main>
   );

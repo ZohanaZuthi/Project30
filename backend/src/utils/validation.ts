@@ -101,6 +101,13 @@ export const userStatusSchema = z
   .object({ blocked: z.boolean() })
   .strict();
 
+export const paginationSchema = z
+  .object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
 export function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
 

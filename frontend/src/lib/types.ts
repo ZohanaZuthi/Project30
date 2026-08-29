@@ -8,7 +8,11 @@ export type CurrentUser = {
   role: {
     name: string;
     type: AppRole;
-  };
+  } | null;
+};
+
+export type AssignedUser = CurrentUser & {
+  role: NonNullable<CurrentUser["role"]>;
 };
 
 export type Lesson = {
@@ -36,6 +40,7 @@ export type ProgressLesson = Pick<
 > & {
   completed: boolean;
   completedAt: string | null;
+  locked: boolean;
 };
 
 export type CourseProgress = {
@@ -117,8 +122,15 @@ export type AdminUser = {
   role: { name: string; type: AppRole } | null;
 };
 
+export type PaginationMeta = {
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  total: number;
+};
+
 export type PlatformStats = {
-  usersByRole: Partial<Record<AppRole, number>>;
+  usersByRole: Partial<Record<AppRole | "unassigned", number>>;
   totalUsers: number;
   totalCourses: number;
   totalLessons: number;

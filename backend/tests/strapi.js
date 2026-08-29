@@ -108,12 +108,15 @@ async function setupStrapi() {
       appDir: path.resolve(__dirname, '..'),
       distDir: path.resolve(__dirname, '..', 'dist'),
     }).load();
-    // SessionManager refresh tokens are covered by Strapi itself; using legacy
-    // JWTs keeps this isolated SQLite suite focused on the LMS route policies.
-    instance.config.set(
-      'plugin::users-permissions.jwtManagement',
-      'legacy-support'
-    );
+    // Jest's VM serializes Date objects passed through Strapi's SQLite session
+    // content type as null. Keep the broad LMS suite on legacy access tokens;
+    // tests/session.api.js runs refresh mode in a normal Node process.
+    if (process.env.LMS_TEST_REFRESH !== 'true') {
+      instance.config.set(
+        'plugin::users-permissions.jwtManagement',
+        'legacy-support'
+      );
+    }
     await instance.start();
     global.strapi = instance;
   }

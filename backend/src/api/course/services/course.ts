@@ -105,7 +105,7 @@ const coursePopulate = {
   instructor: { fields: ["documentId", "username"] },
   lessons: {
     fields: ["documentId", "title", "position"],
-    sort: ["position:asc"],
+    sort: ["position:asc", "createdAt:asc"],
   },
 } satisfies Modules.Documents.Params.Populate.ObjectNotation<"api::course.course">;
 

@@ -1,5 +1,6 @@
 import type { Context } from 'koa';
 
+import { getAuthenticatedUser } from '../../../utils/authorization';
 import {
   lessonCreateSchema,
   lessonUpdateSchema,
@@ -11,7 +12,11 @@ type LessonService = {
   createForCourse(courseDocumentId: string, input: unknown): Promise<unknown>;
   updateManaged(documentId: string, input: unknown): Promise<unknown>;
   deleteManaged(documentId: string): Promise<unknown>;
-  findForStudent(courseDocumentId: string, lessonDocumentId: string): Promise<unknown>;
+  findForStudent(
+    studentId: number,
+    courseDocumentId: string,
+    lessonDocumentId: string
+  ): Promise<unknown>;
 };
 
 function service() {
@@ -50,8 +55,10 @@ export default {
   },
 
   async findForStudent(ctx: Context) {
+    const student = getAuthenticatedUser(ctx);
     ctx.body = {
       data: await service().findForStudent(
+        student.id,
         ctx.params.courseDocumentId,
         ctx.params.lessonDocumentId
       ),

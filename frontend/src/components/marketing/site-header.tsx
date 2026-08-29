@@ -5,8 +5,11 @@ import { getCurrentUser } from "@/lib/dal/auth";
 
 export async function SiteHeader() {
   const user = await getCurrentUser().catch(() => null);
-  const workspaceHref =
-    user?.role.type === APP_ROLES.STUDENT ? "/learn" : "/dashboard";
+  const workspaceHref = !user?.role
+    ? "/no-role"
+    : user.role.type === APP_ROLES.STUDENT
+      ? "/learn"
+      : "/dashboard";
   return (
     <>
       <div className="announcement-bar">
@@ -37,11 +40,13 @@ export async function SiteHeader() {
         <div className="marketing-auth-actions">
           {user ? (
             <>
-              <Link className="nav-login" href="/dashboard">
-                Hi, {user.username}
+              <Link className="nav-login" href={workspaceHref}>
+                স্বাগতম, {user.username}
               </Link>
               <Link className="nav-join" href={workspaceHref}>
-                {user.role.type === APP_ROLES.STUDENT
+                {!user.role
+                  ? "Role pending"
+                  : user.role.type === APP_ROLES.STUDENT
                   ? "শেখা চালিয়ে যান"
                   : "Workspace"}
               </Link>

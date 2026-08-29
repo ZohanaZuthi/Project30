@@ -3,10 +3,10 @@
 Project30 is a role-secured Learning Management System built as a Next.js
 frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
 
-## Completed so far (27 August 2026)
+## Completed so far (28 August 2026)
 
 - Next.js 16 App Router frontend in `frontend/`
-- Strapi 5 backend in `backend/`
+- Self-hosted Strapi 5.52.2 backend in `backend/` (no Strapi Cloud plugin)
 - PostgreSQL development service in `compose.yaml`
 - Railway health/build configuration in `backend/railway.json`
 - Version-controlled course, lesson, enrollment, progress, quiz, attempt, and
@@ -27,7 +27,7 @@ frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
 - Blog workspace with draft/publish/edit/delete controls and public
   published-only list and article pages
 - Dedicated Admin dashboard with platform statistics, user role/status controls,
-  and access to every course and blog post
+  paginated users, unassigned-user counts, and access to every course and blog post
 - Responsive role-aware navigation, loading, empty, pending, success, and error
   states across all workflows
 - Responsive Bangladesh-focused public home page, Strapi-backed course catalog,
@@ -36,10 +36,13 @@ frontend and a self-hosted Strapi modular monolith backed by PostgreSQL.
   free-to-use Pexels photography, and public Bangla tutorial embeds
 - Complete Strapi APIs for enrollment, persistent progress, server-graded
   quizzes and attempt history, draft/published blogs, and Admin users/stats
-- Transactional course cleanup, strict request allow-lists, safe DTOs, and
-  reproducible action permissions plus ownership/enrollment policies
-- 19 backend unit assertions and 10 real Strapi/Supertest API scenarios using an
-  isolated test database
+- Transactional course/lesson cleanup, strict request allow-lists, safe DTOs,
+  unique lesson positions, backend-enforced lesson sequencing, and reproducible
+  action permissions plus ownership/enrollment policies
+- Atomic last-active-Admin protection, role-less refresh-session logout, exact
+  user statistics, and preserved history through block/role-removal controls
+- 21 backend unit assertions, 13 Strapi/Supertest API scenarios, and a dedicated
+  real refresh-session revocation scenario
 - Architecture, authorization, and deployment notes in `docs/`
 
 ## Run locally
@@ -110,6 +113,12 @@ npm test
 npm run lint
 npm run build
 ```
+
+The 28 August dependency audit is documented in the backend guide. Frontend
+production dependencies currently report zero findings; Strapi 5.52.2 still
+inherits Admin/build-tool findings whose npm forced fix would incorrectly
+downgrade the project to Strapi 4.26.2. Recheck for a Strapi 5 patch immediately
+before Railway deployment.
 
 See [`docs/backend-implementation-guide.md`](docs/backend-implementation-guide.md)
 for the endpoint-by-endpoint code tour, request flows, test strategy, security
@@ -182,7 +191,10 @@ Use this workflow:
 1. Every new registration receives the Student role.
 2. An application Admin can promote the user to Instructor, Content Manager, or Admin.
 3. Only an Admin endpoint can modify roles.
-4. Prevent the last Admin from removing or demoting themselves.
+4. Prevent the last active Admin from being demoted or blocked, using a
+   PostgreSQL transaction lock so concurrent requests cannot bypass the rule.
+   Accounts whose role is removed enter an explicit unassigned state with no
+   LMS permissions until an Admin assigns a new role.
 
 Otherwise, anyone could register as an Admin and take over the platform.
 

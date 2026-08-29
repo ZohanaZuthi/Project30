@@ -33,7 +33,7 @@ export function EnrollButton({
   return (
     <div className="enroll-action">
       <button disabled={pending} onClick={enroll} type="button">
-        {pending ? "Enrolling…" : "Enroll free →"}
+        {pending ? "Enroll হচ্ছে…" : "ফ্রি enroll করুন →"}
       </button>
       {error && <p role="alert">{error}</p>}
     </div>

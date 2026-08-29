@@ -1,14 +1,19 @@
 # Complete Strapi backend implementation guide
 
-Date: 26 August 2026
+Date: 28 August 2026
 
 ## 1. What this backend is
 
-This is one self-hosted Strapi 5 application deployed later to Railway with one
+This is one self-hosted Strapi 5.52.2 application deployed later to Railway with one
 PostgreSQL database. It is a modular monolith: Course, Enrollment, Progress,
 Quiz, Blog, and Platform are separate code modules, but they run in one process
 and use direct service/database calls. NATS or another broker is unnecessary
 because every required operation is a short synchronous request.
+
+`@strapi/plugin-cloud` is intentionally not installed. Railway hosts this
+Strapi process, so the Strapi Cloud deployment plugin would add an unused
+dependency and does not participate in application authentication or content
+management.
 
 The request path is:
 
@@ -51,7 +56,8 @@ Important distinction:
 `backend/src/index.ts` performs an idempotent bootstrap:
 
 1. Find or create `student`, `instructor`, `content_manager`, and `admin` roles.
-2. Seed the exact controller-action permissions each role needs.
+2. Seed the exact controller-action permissions each role needs and remove
+   stale/unlisted application actions left by an older build or dashboard edit.
 3. Make Student the public-registration default.
 4. Migrate legacy `authenticated` application users to Student.
 
@@ -97,7 +103,8 @@ Content-Type: application/json
 | --- | --- | --- | --- |
 | POST | `/api/auth/local/register` | Public | Register a Student only |
 | POST | `/api/auth/local` | Public | Log in and receive access/refresh tokens |
-| GET | `/api/lms/me` | Any signed-in role | Return a minimal safe identity and role |
+| GET | `/api/lms/me` | Any signed-in account | Return a minimal safe identity, including `role: null` |
+| POST | `/api/lms/logout` | Public, token-validated | Revoke the supplied refresh session idempotently |
 
 Register body:
 
@@ -149,7 +156,11 @@ Lesson create body:
 }
 ```
 
-At least text or a valid video URL is required. `position` determines sequence.
+At least text or a valid video URL is required. `position` determines sequence
+and must be unique inside one course. Lesson create, reorder, and delete obtain
+a course-scoped PostgreSQL transaction advisory lock, so two concurrent writes
+cannot both claim the same position. A lesson delete also removes its dependent
+progress rows in the same transaction.
 
 ### Enrollment and progress
 
@@ -189,6 +200,11 @@ percentage = totalLessons === 0
 ```
 
 This stays accurate when a course later gains or loses lessons.
+
+The response also marks each lesson as `locked` or unlocked. The first lesson
+is available; a later lesson becomes available only after every preceding
+lesson is complete. Both lesson viewing and completion call the same backend
+guard, so manually changing the URL cannot skip the sequence.
 
 ### Quizzes and attempts
 
@@ -246,10 +262,9 @@ it.
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/lms/admin/users` | Admin | Safe user list |
-| PATCH | `/api/lms/admin/users/:userDocumentId/role` | Admin | Assign/remove LMS role |
+| GET | `/api/lms/admin/users?page=1&pageSize=20` | Admin | Paginated safe user list |
+| PATCH | `/api/lms/admin/users/:userDocumentId/role` | Admin | Assign or remove an LMS role |
 | PATCH | `/api/lms/admin/users/:userDocumentId/status` | Admin | Block/unblock login |
-| DELETE | `/api/lms/admin/users/:userDocumentId` | Admin | Delete account |
 | GET | `/api/lms/admin/stats` | Admin | Users by role and content totals |
 
 Role body:
@@ -259,8 +274,18 @@ Role body:
 ```
 
 Allowed values are `admin`, `content_manager`, `instructor`, `student`, or
-`null`. The service prevents self-blocking, self-deletion, and removing,
-blocking, or demoting the final Admin.
+`null`. The service prevents self-blocking and removing, blocking, or demoting
+the last unblocked Admin. All Admin-role and blocked-status writes are
+serialized with a PostgreSQL transaction advisory lock; the fresh count and
+the update therefore form one atomic decision instead of a vulnerable
+count-then-update race.
+
+A user assigned `null` keeps a valid account but receives no private LMS
+permissions. Blocking is a separate suspension control. Permanent user deletion
+is deliberately not exposed: preserving the account relation keeps enrollment,
+progress, authorship, and quiz history auditable. The user list is paginated,
+while the stats endpoint obtains `totalUsers` directly and includes an
+`unassigned` bucket, so its totals never silently omit role-less accounts.
 
 ## 5. How backend authorization works
 
@@ -270,6 +295,19 @@ Authorization is defense in depth:
 2. The bootstrapped action permission rejects a role that never owns that
    controller action.
 3. A policy applies dynamic rules that static roles cannot express.
+
+The identity-only `GET /api/lms/me` endpoint is one deliberate exception to
+the stock route strategy: it verifies the Users & Permissions JWT directly,
+then loads the account and role. Strapi's default strategy expects
+`user.role.id`, so this narrow endpoint lets an authenticated unassigned user
+receive `role: null` and reach `/no-role`. It still rejects missing, invalid,
+expired, blocked, and—when enabled—unconfirmed accounts. No content endpoint
+uses this exception.
+
+`POST /api/lms/logout` is a second narrow exception. It validates the refresh
+token, revokes only the returned user/session pair, and always returns the same
+success body. This lets an unassigned account log out without granting it any
+content permission and avoids exposing a token-validity oracle.
 
 Examples:
 
@@ -307,18 +345,20 @@ Commands:
 ```bash
 npm --prefix backend run test:unit
 npm --prefix backend run test:api
+npm --prefix backend run test:session
 npm --prefix backend test
 ```
 
-Unit tests (19 assertions) cover:
+Unit tests (21 assertions) cover:
 
 - role and ownership truth tables;
 - enrollment/completion unique-key generation;
 - progress edge cases and clamping;
 - quiz grading, missing answers, and invalid indexes;
+- sequential lesson-lock calculations;
 - strict validation for courses, lessons, quizzes, submissions, blogs, roles.
 
-API tests boot real Strapi and execute 10 scenarios through HTTP:
+The main API suite boots real Strapi and executes 13 scenarios through HTTP:
 
 - public health plus anonymous rejection;
 - authenticated identity and role loading;
@@ -328,16 +368,36 @@ API tests boot real Strapi and execute 10 scenarios through HTTP:
 - idempotent enrollment and completion;
 - no correct answers in Student quiz responses plus automatic grading;
 - draft-hidden then published blog flow;
-- Content Manager admin denial and Admin role/stats success.
+- Content Manager admin denial and Admin role/stats success;
+- atomic-rule behavior for last-active Admin changes, unassigned-role
+  visibility, exact total-user counting, and paginated user responses;
+- duplicate lesson-position rejection, sequential lesson enforcement, and
+  dependent progress cleanup after lesson deletion.
 
 The API test runs a fresh build first and deletes its isolated database during
 cleanup. It never touches the development PostgreSQL database.
 
-The test harness uses the plugin's legacy JWT issuance mode because Strapi's
-refresh-session manager is not compatible with the patched SQLite adapter used
-by its testing guide. Production remains in refresh mode; the same
-Users & Permissions authentication strategy still loads the user and role
-before every LMS action/policy test.
+The broad Jest harness uses the plugin's legacy JWT mode because Jest's VM plus
+the disposable SQLite adapter does not preserve the Date values required by
+Strapi's refresh-session records. Production remains in refresh mode. A
+separate normal-Node API test starts real Strapi in refresh mode, removes a
+user's role, logs the account out, and proves that the old refresh token can no
+longer obtain an access token.
+
+### Dependency audit on 28 August 2026
+
+`npm audit --omit=dev` reports zero vulnerabilities for the Next.js frontend.
+The backend reports 19 inherited findings (1 high, 14 moderate, 4 low) inside
+Strapi's pinned Admin/build dependency tree: Vite, React Router, and AI SDK
+packages used by the Content Type Builder. Strapi itself is already on the
+current 5.52.2 patch. npm's proposed forced fix is a downgrade to Strapi 4.26.2,
+which is incompatible with this Strapi 5 application and must not be applied.
+
+The high Vite advisory concerns development/build tooling rather than a public
+LMS API route, and Railway must run `strapi start`, never expose a Vite dev
+server. This lowers exposure but does not erase the audit result. Recheck for a
+Strapi 5 patch before deployment, upgrade through Strapi's upgrader, and rerun
+the complete test/build/audit suite.
 
 ## 8. Run locally
 
@@ -413,6 +473,7 @@ clearer. Public outputs still use document IDs and explicit DTOs.
 
 ### What would you improve after the deadline?
 
-Add pagination/filter limits, rate limiting on auth/quiz submission, email
-verification and password reset UX, audit-log storage, media object storage,
-database indexes verified with production query plans, and browser E2E tests.
+Add search/filter controls, quiz-submission rate limiting, email verification
+and password reset UX, durable audit-log storage, media object storage,
+PostgreSQL concurrency integration tests, database indexes verified with
+production query plans, and browser E2E tests.

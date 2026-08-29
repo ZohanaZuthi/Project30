@@ -11,13 +11,14 @@ import type {
   ManagedProgress,
   MyCourse,
   PlatformStats,
+  PaginationMeta,
   Quiz,
   QuizAttempt,
   Lesson,
 } from "../types";
 import { getAccessToken } from "./auth";
 
-async function authenticatedData<T>(path: `/api/lms/${string}`) {
+async function authenticatedResponse<T>(path: `/api/lms/${string}`) {
   const token = await getAccessToken();
   if (!token)
     redirect(`/login?next=${encodeURIComponent(path.replace("/api/lms", ""))}`);
@@ -30,7 +31,11 @@ async function authenticatedData<T>(path: `/api/lms/${string}`) {
   if (response.status === 403) redirect("/forbidden");
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("Could not load LMS data from Strapi.");
-  return ((await response.json()) as { data: T }).data;
+  return (await response.json()) as { data: T; meta?: PaginationMeta };
+}
+
+async function authenticatedData<T>(path: `/api/lms/${string}`) {
+  return (await authenticatedResponse<T>(path))?.data ?? null;
 }
 
 export async function getMyCourses() {
@@ -109,8 +114,32 @@ export async function getManagedBlog(documentId: string) {
   );
 }
 
-export async function getAdminUsers() {
-  return (await authenticatedData<AdminUser[]>("/api/lms/admin/users")) ?? [];
+export async function getAdminUsers(page = 1, pageSize = 20) {
+  const response = await authenticatedResponse<AdminUser[]>(
+    `/api/lms/admin/users?page=${page}&pageSize=${pageSize}`,
+  );
+  return {
+    data: response?.data ?? [],
+    meta: response?.meta ?? {
+      page,
+      pageSize,
+      pageCount: 0,
+      total: 0,
+    },
+  };
+}
+
+export async function getAllAdminUsers() {
+  const firstPage = await getAdminUsers(1, 100);
+  if (firstPage.meta.pageCount <= 1) return firstPage.data;
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.meta.pageCount - 1 }, (_, index) =>
+      getAdminUsers(index + 2, 100),
+    ),
+  );
+
+  return [firstPage.data, ...remainingPages.map(({ data }) => data)].flat();
 }
 
 export async function getPlatformStats() {

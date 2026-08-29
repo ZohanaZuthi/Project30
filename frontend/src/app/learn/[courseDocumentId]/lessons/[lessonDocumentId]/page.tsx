@@ -26,9 +26,11 @@ export default async function LessonPage({
   if (currentIndex < 0) notFound();
   const previous = learning.course.lessons[currentIndex - 1];
   const next = learning.course.lessons[currentIndex + 1];
-  const completed =
-    progress.lessons?.find((item) => item.documentId === lessonDocumentId)
-      ?.completed ?? false;
+  const progressById = new Map(
+    progress.lessons?.map((item) => [item.documentId, item]) ?? [],
+  );
+  const completed = progressById.get(lessonDocumentId)?.completed ?? false;
+  const nextLocked = next ? (progressById.get(next.documentId)?.locked ?? true) : false;
   const embedUrl = getYouTubeEmbedUrl(lesson.videoUrl);
 
   return (
@@ -96,12 +98,14 @@ export default async function LessonPage({
             ) : (
               <span />
             )}
-            {next ? (
+            {next && !nextLocked ? (
               <Link
                 href={`/learn/${courseDocumentId}/lessons/${next.documentId}`}
               >
                 {next.title} →
               </Link>
+            ) : next ? (
+              <span className="locked-pagination">Complete this lesson to continue →</span>
             ) : (
               <Link href={`/learn/${courseDocumentId}`}>Finish course →</Link>
             )}
@@ -111,25 +115,29 @@ export default async function LessonPage({
           <p className="eyebrow">Course outline</p>
           <h2>{learning.course.title}</h2>
           <ol>
-            {learning.course.lessons.map((item, index) => (
-              <li
-                className={item.documentId === lessonDocumentId ? "active" : ""}
-                key={item.documentId}
-              >
-                <Link
-                  href={`/learn/${courseDocumentId}/lessons/${item.documentId}`}
-                >
-                  <span>
-                    {progress.lessons?.find(
-                      (entry) => entry.documentId === item.documentId,
-                    )?.completed
-                      ? "✓"
-                      : index + 1}
-                  </span>
+            {learning.course.lessons.map((item, index) => {
+              const itemProgress = progressById.get(item.documentId);
+              const content = (
+                <>
+                  <span>{itemProgress?.completed ? "✓" : itemProgress?.locked ? "🔒" : index + 1}</span>
                   {item.title}
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+              return (
+                <li
+                  className={item.documentId === lessonDocumentId ? "active" : ""}
+                  key={item.documentId}
+                >
+                  {itemProgress?.locked ? (
+                    <div className="locked-outline-lesson">{content}</div>
+                  ) : (
+                    <Link href={`/learn/${courseDocumentId}/lessons/${item.documentId}`}>
+                      {content}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </aside>
       </div>

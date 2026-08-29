@@ -10,7 +10,7 @@ import { APP_ROLES, COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
 import { requireRole } from "@/lib/dal/auth";
 import { getManagedCourse, getManagedLessons } from "@/lib/dal/courses";
 import {
-  getAdminUsers,
+  getAllAdminUsers,
   getManagedProgress,
   getManagedQuizzes,
 } from "@/lib/dal/lms";
@@ -29,7 +29,7 @@ export default async function EditCoursePage({
   if (!course) notFound();
   const instructors =
     user.role.type === APP_ROLES.ADMIN
-      ? (await getAdminUsers()).filter(
+      ? (await getAllAdminUsers()).filter(
           (candidate) => candidate.role?.type === APP_ROLES.INSTRUCTOR,
         )
       : [];

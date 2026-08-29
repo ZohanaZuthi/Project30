@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { StudentDashboard } from "@/components/dashboard/student-dashboard";
 import { APP_ROLES, COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
-import { requireUser } from "@/lib/dal/auth";
+import { requireAssignedUser } from "@/lib/dal/auth";
+import { getMyCourses } from "@/lib/dal/lms";
 
 const roleCopy = {
   admin: "You have platform-wide application access.",
@@ -12,7 +14,17 @@ const roleCopy = {
 };
 
 export default async function DashboardPage() {
-  const user = await requireUser();
+  const user = await requireAssignedUser();
+
+  if (user.role.type === APP_ROLES.STUDENT) {
+    const enrollments = await getMyCourses();
+    return (
+      <DashboardShell user={user}>
+        <StudentDashboard enrollments={enrollments} username={user.username} />
+      </DashboardShell>
+    );
+  }
+
   const canManage = COURSE_MANAGER_ROLES.includes(user.role.type);
   const canManageBlogs =
     user.role.type === APP_ROLES.ADMIN ||

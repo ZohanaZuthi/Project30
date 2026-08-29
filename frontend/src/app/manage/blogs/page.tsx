@@ -30,32 +30,36 @@ export default async function ManageBlogsPage() {
         <div className="managed-blog-grid">
           {posts.map((post, index) => (
             <article key={post.documentId}>
-              <div className="managed-blog-cover">
-                <Image
-                  alt=""
-                  fill
-                  sizes="(max-width: 760px) 100vw, 33vw"
-                  src={getSafeBlogImage(post.coverImageUrl, index)}
-                />
-                <span
-                  className={
-                    post.publishedAt ? "status published" : "status draft"
-                  }
-                >
-                  {post.publishedAt ? "Published" : "Draft"}
-                </span>
-              </div>
-              <div>
-                <small>By {post.author?.username ?? "Project30 team"}</small>
-                <h2>{post.title}</h2>
-                <p>
-                  {post.body.slice(0, 130)}
-                  {post.body.length > 130 ? "…" : ""}
-                </p>
-                <Link href={`/manage/blogs/${post.documentId}/edit`}>
-                  Edit post →
-                </Link>
-              </div>
+              <Link
+                aria-label={`Edit ${post.title}`}
+                className="managed-blog-card-link"
+                href={`/manage/blogs/${post.documentId}/edit`}
+              >
+                <div className="managed-blog-cover">
+                  <Image
+                    alt=""
+                    fill
+                    sizes="(max-width: 760px) 100vw, 33vw"
+                    src={getSafeBlogImage(post.coverImageUrl, index)}
+                  />
+                  <span
+                    className={
+                      post.publishedAt ? "status published" : "status draft"
+                    }
+                  >
+                    {post.publishedAt ? "Published" : "Draft"}
+                  </span>
+                </div>
+                <div>
+                  <small>By {post.author?.username ?? "Project30 team"}</small>
+                  <h2>{post.title}</h2>
+                  <p>
+                    {post.body.slice(0, 130)}
+                    {post.body.length > 130 ? "…" : ""}
+                  </p>
+                  <span className="managed-blog-edit-label">Edit post →</span>
+                </div>
+              </Link>
             </article>
           ))}
         </div>

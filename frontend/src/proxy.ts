@@ -18,6 +18,7 @@ export const config = {
     "/dashboard/:path*",
     "/learn/:path*",
     "/manage/:path*",
+    "/no-role/:path*",
     "/quiz-attempts/:path*",
   ],
 };

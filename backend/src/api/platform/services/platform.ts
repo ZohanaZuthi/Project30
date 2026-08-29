@@ -2,6 +2,7 @@ import type { Core } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
 
 import { APP_ROLES, type AppRole } from '../../../utils/authorization';
+import { acquirePostgresTransactionLock } from '../../../utils/database-lock';
 
 type RoleRecord = { id: number; name: string; type: string };
 type UserRecord = {
@@ -16,6 +17,7 @@ type UserRecord = {
 };
 
 const { ForbiddenError, NotFoundError, ValidationError } = errors;
+const ADMIN_MUTATION_LOCK = 'lms:active-admin-membership';
 
 function userDto(user: UserRecord) {
   return {
@@ -44,74 +46,100 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     return user;
   }
 
-  async function assertAdminCanBeChanged(target: UserRecord, nextRole?: string | null) {
-    if (target.role?.type !== APP_ROLES.ADMIN || nextRole === APP_ROLES.ADMIN) return;
-    const adminCount = await users().count({
-      where: { role: { type: APP_ROLES.ADMIN } },
+  async function lockAdminMutations(trx: unknown) {
+    await acquirePostgresTransactionLock(trx, ADMIN_MUTATION_LOCK);
+  }
+
+  async function assertAdminCanBeChanged(target: UserRecord) {
+    if (target.role?.type !== APP_ROLES.ADMIN || target.blocked) return;
+
+    const activeAdminCount = await users().count({
+      where: {
+        role: { type: APP_ROLES.ADMIN },
+        blocked: false,
+      },
     });
-    if (adminCount <= 1) {
-      throw new ValidationError('The last admin account cannot be removed or demoted.');
+
+    if (activeAdminCount <= 1) {
+      throw new ValidationError(
+        'Cannot demote or block the last active Admin.'
+      );
     }
   }
 
   return {
-    async findUsers() {
-      const records = (await users().findMany({
-        populate: { role: true },
-        orderBy: { createdAt: 'desc' },
-      })) as UserRecord[];
-      return records.map(userDto);
+    async findUsers(page: number, pageSize: number) {
+      const [records, total] = await Promise.all([
+        users().findMany({
+          populate: { role: true },
+          orderBy: { createdAt: 'desc' },
+          offset: (page - 1) * pageSize,
+          limit: pageSize,
+        }) as Promise<UserRecord[]>,
+        users().count({}),
+      ]);
+      return {
+        data: records.map(userDto),
+        meta: {
+          page,
+          pageSize,
+          pageCount: Math.ceil(total / pageSize),
+          total,
+        },
+      };
     },
 
     async updateRole(actorId: number, userDocumentId: string, roleType: AppRole | null) {
-      const target = await findUser(userDocumentId);
-      await assertAdminCanBeChanged(target, roleType);
+      const updated = await strapi.db.transaction(async ({ trx }) => {
+        await lockAdminMutations(trx);
+        const target = await findUser(userDocumentId);
+        if (roleType !== APP_ROLES.ADMIN) {
+          await assertAdminCanBeChanged(target);
+        }
 
-      const role = roleType
-        ? ((await roles().findOne({ where: { type: roleType } })) as RoleRecord | null)
-        : null;
-      if (roleType && !role) throw new ValidationError('Application role not found.');
+        const role = roleType
+          ? ((await roles().findOne({ where: { type: roleType } })) as RoleRecord | null)
+          : null;
+        if (roleType && !role) {
+          throw new ValidationError('Application role not found.');
+        }
 
-      const updated = (await users().update({
-        where: { id: target.id },
-        data: { role: role?.id ?? null },
-        populate: { role: true },
-      })) as UserRecord;
-      strapi.log.info(`Admin user ${actorId} changed user ${target.id} role to ${roleType ?? 'none'}.`);
+        return (await users().update({
+          where: { id: target.id },
+          data: { role: role?.id ?? null },
+          populate: { role: true },
+        })) as UserRecord;
+      });
+      strapi.log.info(
+        `Admin user ${actorId} changed user ${updated.id} role to ${roleType ?? 'unassigned'}.`
+      );
       return userDto(updated);
     },
 
     async updateStatus(actorId: number, userDocumentId: string, blocked: boolean) {
-      const target = await findUser(userDocumentId);
-      if (actorId === target.id && blocked) {
-        throw new ForbiddenError('You cannot block your own account.');
-      }
-      if (blocked) await assertAdminCanBeChanged(target, null);
+      const updated = await strapi.db.transaction(async ({ trx }) => {
+        await lockAdminMutations(trx);
+        const target = await findUser(userDocumentId);
+        if (actorId === target.id && blocked) {
+          throw new ForbiddenError('You cannot block your own account.');
+        }
+        if (blocked) await assertAdminCanBeChanged(target);
 
-      const updated = (await users().update({
-        where: { id: target.id },
-        data: { blocked },
-        populate: { role: true },
-      })) as UserRecord;
-      strapi.log.info(`Admin user ${actorId} set user ${target.id} blocked=${blocked}.`);
+        return (await users().update({
+          where: { id: target.id },
+          data: { blocked },
+          populate: { role: true },
+        })) as UserRecord;
+      });
+      strapi.log.info(`Admin user ${actorId} set user ${updated.id} blocked=${blocked}.`);
       return userDto(updated);
     },
 
-    async deleteUser(actorId: number, userDocumentId: string) {
-      const target = await findUser(userDocumentId);
-      if (actorId === target.id) {
-        throw new ForbiddenError('You cannot delete your own account.');
-      }
-      await assertAdminCanBeChanged(target, null);
-      await users().delete({ where: { id: target.id } });
-      strapi.log.info(`Admin user ${actorId} deleted user ${target.id}.`);
-      return { documentId: userDocumentId };
-    },
-
     async stats() {
-      const [allRoles, totalCourses, totalLessons, totalEnrollments, totalQuizzes, totalAttempts, publishedPosts] =
+      const [allRoles, totalUsers, totalCourses, totalLessons, totalEnrollments, totalQuizzes, totalAttempts, publishedPosts] =
         await Promise.all([
           roles().findMany({ where: { type: { $in: Object.values(APP_ROLES) } } }),
+          users().count({}),
           strapi.documents('api::course.course').count({}),
           strapi.documents('api::lesson.lesson').count({}),
           strapi.documents('api::enrollment.enrollment').count({}),
@@ -125,10 +153,14 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           await users().count({ where: { role: { id: role.id } } }),
         ] as const)
       );
+      const unassignedUsers = await users().count({ where: { role: null } });
 
       return {
-        usersByRole: Object.fromEntries(roleCounts),
-        totalUsers: roleCounts.reduce((sum, [, count]) => sum + count, 0),
+        usersByRole: {
+          ...Object.fromEntries(roleCounts),
+          unassigned: unassignedUsers,
+        },
+        totalUsers,
         totalCourses,
         totalLessons,
         totalEnrollments,

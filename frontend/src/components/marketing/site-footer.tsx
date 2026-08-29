@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-export function SiteFooter() {
+import { APP_ROLES } from "@/lib/auth/constants";
+import { getCurrentUser } from "@/lib/dal/auth";
+
+export async function SiteFooter() {
+  const user = await getCurrentUser().catch(() => null);
+  const workspaceHref = user?.role ? "/dashboard" : "/no-role";
+
   return (
     <footer className="marketing-footer">
       <div className="footer-grid">
@@ -26,19 +32,26 @@ export function SiteFooter() {
           <Link href="/#free-class">ফ্রি ক্লাস</Link>
         </div>
         <div>
-          <strong>প্ল্যাটফর্ম</strong>
-          <Link href="/login">লগ ইন</Link>
-          <Link href="/register">Student account</Link>
-        </div>
-        <div>
-          <strong>তথ্য</strong>
-          <Link href="/media-credits">Media credits</Link>
-          <a href="/api/health">System health</a>
+          <strong>{user ? "আপনার অ্যাকাউন্ট" : "শুরু করুন"}</strong>
+          {user ? (
+            <>
+              <Link href={workspaceHref}>{user.username}</Link>
+              <Link href={workspaceHref}>ড্যাশবোর্ড</Link>
+              {user.role?.type === APP_ROLES.STUDENT && (
+                <Link href="/learn">আমার কোর্স</Link>
+              )}
+            </>
+          ) : (
+            <>
+              <Link href="/login">লগ ইন করুন</Link>
+              <Link href="/register">ফ্রি Student account খুলুন</Link>
+            </>
+          )}
         </div>
       </div>
       <div className="footer-bottom">
         <span>© 2026 Project30 Academy</span>
-        <span>Next.js · Strapi · PostgreSQL</span>
+        <span>নিজের গতিতে শিখুন · অগ্রগতি ধরে রাখুন</span>
       </div>
     </footer>
   );

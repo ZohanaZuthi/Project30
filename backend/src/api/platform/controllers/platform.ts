@@ -3,15 +3,15 @@ import type { Context } from 'koa';
 import { getAuthenticatedUser } from '../../../utils/authorization';
 import {
   parseBody,
+  paginationSchema,
   roleUpdateSchema,
   userStatusSchema,
 } from '../../../utils/validation';
 
 type PlatformService = {
-  findUsers(): Promise<unknown>;
+  findUsers(page: number, pageSize: number): Promise<unknown>;
   updateRole(actorId: number, userDocumentId: string, role: string | null): Promise<unknown>;
   updateStatus(actorId: number, userDocumentId: string, blocked: boolean): Promise<unknown>;
-  deleteUser(actorId: number, userDocumentId: string): Promise<unknown>;
   stats(): Promise<unknown>;
 };
 
@@ -21,7 +21,8 @@ function service() {
 
 export default {
   async findUsers(ctx: Context) {
-    ctx.body = { data: await service().findUsers() };
+    const { page, pageSize } = parseBody(paginationSchema, ctx.query);
+    ctx.body = await service().findUsers(page, pageSize);
   },
 
   async updateRole(ctx: Context) {
@@ -41,13 +42,6 @@ export default {
         ctx.params.userDocumentId,
         blocked
       ),
-    };
-  },
-
-  async deleteUser(ctx: Context) {
-    const actor = getAuthenticatedUser(ctx);
-    ctx.body = {
-      data: await service().deleteUser(actor.id, ctx.params.userDocumentId),
     };
   },
 

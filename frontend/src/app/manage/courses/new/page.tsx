@@ -2,13 +2,13 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { CourseForm } from "@/components/dashboard/course-form";
 import { APP_ROLES, COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
 import { requireRole } from "@/lib/dal/auth";
-import { getAdminUsers } from "@/lib/dal/lms";
+import { getAllAdminUsers } from "@/lib/dal/lms";
 
 export default async function NewCoursePage() {
   const user = await requireRole(COURSE_MANAGER_ROLES);
   const instructors =
     user.role.type === APP_ROLES.ADMIN
-      ? (await getAdminUsers()).filter(
+      ? (await getAllAdminUsers()).filter(
           (candidate) => candidate.role?.type === APP_ROLES.INSTRUCTOR,
         )
       : [];

@@ -42,25 +42,34 @@ const courses = [
         title: "কোর্স পরিচিতি ও শেখার রোডম্যাপ",
         content:
           "Understand the project, tools, and the full-stack learning path.",
-        videoUrl: "https://www.youtube.com/watch?v=NgrljB7UU34",
+        videoUrl:
+          "https://www.youtube.com/watch?v=_xVJg4qk0Qc&list=PLQvUYGXiwrskS_C3MOeW0rOVB5Ny2MCR2&index=1",
       },
       {
         title: "App Router ও Server Components",
         content: "Build routes, layouts, and data-driven Server Components.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=-SeQGGEpYjA&list=PLQvUYGXiwrskS_C3MOeW0rOVB5Ny2MCR2&index=2",
       },
       {
         title: "Strapi API Integration",
         content:
           "Connect a Next.js frontend to protected Strapi REST endpoints.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=QMJy1Sf0YMI&list=PLQvUYGXiwrskS_C3MOeW0rOVB5Ny2MCR2&index=3",
       },
       {
         title: "Authentication ও Role Protection",
         content:
           "Protect pages and backend actions with secure session handling.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=Edt3_qJdESY&list=PLQvUYGXiwrskS_C3MOeW0rOVB5Ny2MCR2&index=4",
       },
       {
         title: "Production Build ও Deployment",
         content: "Prepare the application for Vercel and Railway.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=QY6YVoo3gkY&list=PLQvUYGXiwrskS_C3MOeW0rOVB5Ny2MCR2&index=5",
       },
     ],
     quiz: {
@@ -90,19 +99,26 @@ const courses = [
       {
         title: "Figma workspace পরিচিতি",
         content: "Learn frames, auto layout, components, and reusable styles.",
-        videoUrl: "https://www.youtube.com/watch?v=Ed1ineovwzg",
+        videoUrl:
+          "https://www.youtube.com/watch?v=Ed1ineovwzg&list=PLWbE3N6PuWU6xx4Q6_lvLB7EDCFU7M0Q4&index=1",
       },
       {
         title: "User research ও problem framing",
         content: "Turn user needs into a focused product problem.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=2p2emG4abm0&list=PLWbE3N6PuWU6xx4Q6_lvLB7EDCFU7M0Q4&index=2",
       },
       {
         title: "Wireframe থেকে high-fidelity UI",
         content: "Design responsive screens with a consistent visual system.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=rByQkX8Kt-E&list=PLWbE3N6PuWU6xx4Q6_lvLB7EDCFU7M0Q4&index=3",
       },
       {
         title: "Prototype ও usability testing",
         content: "Connect flows, test assumptions, and improve the experience.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=QiqXULFV13k&list=PLWbE3N6PuWU6xx4Q6_lvLB7EDCFU7M0Q4&index=4",
       },
     ],
     quiz: {
@@ -127,19 +143,26 @@ const courses = [
       {
         title: "Digital marketing fundamentals",
         content: "Understand channels, funnels, audiences, and campaign goals.",
-        videoUrl: "https://www.youtube.com/watch?v=uNNcfiqNajg",
+        videoUrl:
+          "https://www.youtube.com/watch?v=JZbvOJmSx8Q&list=PLXBs5IsvvrdgFcveGzarQPJEWMMkA4NFE&index=1",
       },
       {
         title: "Content strategy ও customer journey",
         content: "Map useful content to each stage of a customer journey.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=Y0TOO4R0Sq0&list=PLXBs5IsvvrdgFcveGzarQPJEWMMkA4NFE&index=2",
       },
       {
         title: "SEO ও campaign measurement",
         content: "Choose practical metrics and evaluate campaign performance.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=wLWRMzZYnwU&list=PLXBs5IsvvrdgFcveGzarQPJEWMMkA4NFE&index=3",
       },
       {
         title: "Capstone growth campaign",
         content: "Create a complete campaign brief for a local business.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=AONYJ9MOBHQ&list=PLXBs5IsvvrdgFcveGzarQPJEWMMkA4NFE&index=4",
       },
     ],
     quiz: {
@@ -165,20 +188,27 @@ const courses = [
         title: "Python setup ও core syntax",
         content:
           "Set up Python and learn variables, conditions, loops, and functions.",
-        videoUrl: "https://www.youtube.com/watch?v=1mLmW0sTzjw",
+        videoUrl:
+          "https://www.youtube.com/watch?v=L3iYWJbPxT4&list=PLoL-aNyxKqYoNPreB7lP9070C8hfYaw8H&index=1",
       },
       {
         title: "Working with structured data",
         content: "Load, inspect, and clean tabular datasets.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=mTtETywhc2g&list=PLoL-aNyxKqYoNPreB7lP9070C8hfYaw8H&index=2",
       },
       {
         title: "Analysis ও visualization",
         content: "Answer questions using summaries, grouping, and charts.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=R14qvU4K2Xs&list=PLoL-aNyxKqYoNPreB7lP9070C8hfYaw8H&index=3",
       },
       {
         title: "Portfolio data project",
         content:
           "Present an end-to-end analysis with findings and recommendations.",
+        videoUrl:
+          "https://www.youtube.com/watch?v=LKCOB3stGKo&list=PLoL-aNyxKqYoNPreB7lP9070C8hfYaw8H&index=4",
       },
     ],
     quiz: {
@@ -225,19 +255,27 @@ async function seedCourse(strapi, seed, accounts) {
 
   const existingLessons = await strapi.db.query("api::lesson.lesson").findMany({
     where: { course: { documentId: course.documentId } },
-    select: ["title"],
+    select: ["documentId", "title"],
   });
-  const lessonTitles = new Set(existingLessons.map(({ title }) => title));
+  const lessonsByTitle = new Map(
+    existingLessons.map((lesson) => [lesson.title, lesson]),
+  );
 
   for (const [index, lesson] of seed.lessons.entries()) {
-    if (lessonTitles.has(lesson.title)) continue;
-    await strapi.documents("api::lesson.lesson").create({
-      data: {
-        ...lesson,
-        position: index + 1,
-        course: course.documentId,
-      },
-    });
+    const data = {
+      ...lesson,
+      position: index + 1,
+      course: course.documentId,
+    };
+    const existing = lessonsByTitle.get(lesson.title);
+    if (existing) {
+      await strapi.documents("api::lesson.lesson").update({
+        documentId: existing.documentId,
+        data,
+      });
+    } else {
+      await strapi.documents("api::lesson.lesson").create({ data });
+    }
   }
 
   const existingQuiz = await strapi.db.query("api::quiz.quiz").findOne({

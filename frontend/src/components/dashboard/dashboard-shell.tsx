@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { APP_ROLES, COURSE_MANAGER_ROLES } from "@/lib/auth/constants";
-import type { CurrentUser } from "@/lib/types";
+import type { AssignedUser } from "@/lib/types";
 
 import { LogoutButton } from "./logout-button";
 
@@ -10,7 +10,7 @@ export function DashboardShell({
   user,
   children,
 }: {
-  user: CurrentUser;
+  user: AssignedUser;
   children: ReactNode;
 }) {
   const canManageCourses = COURSE_MANAGER_ROLES.includes(user.role.type);

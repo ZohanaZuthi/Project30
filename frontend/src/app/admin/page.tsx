@@ -11,11 +11,16 @@ import {
   getPlatformStats,
 } from "@/lib/dal/lms";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: Pick<PageProps<"/admin">, "searchParams">) {
+  const rawPage = (await searchParams).page;
+  const requestedPage = Number(Array.isArray(rawPage) ? rawPage[0] : rawPage);
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const user = await requireRole([APP_ROLES.ADMIN]);
-  const [stats, users, courses, posts] = await Promise.all([
+  const [stats, userPage, courses, posts] = await Promise.all([
     getPlatformStats(),
-    getAdminUsers(),
+    getAdminUsers(page),
     getManagedCourses(),
     getManagedBlogs(),
   ]);
@@ -57,6 +62,7 @@ export default async function AdminPage() {
             APP_ROLES.CONTENT_MANAGER,
             APP_ROLES.INSTRUCTOR,
             APP_ROLES.STUDENT,
+            "unassigned",
           ] as const
         ).map((role) => (
           <div key={role}>
@@ -65,7 +71,24 @@ export default async function AdminPage() {
           </div>
         ))}
       </section>
-      <UserManager actorDocumentId={user.documentId} initialUsers={users} />
+      <UserManager
+        actorDocumentId={user.documentId}
+        initialUsers={userPage.data}
+        totalUsers={userPage.meta.total}
+      />
+      {userPage.meta.pageCount > 1 && (
+        <nav className="admin-pagination" aria-label="User pages">
+          {page > 1 ? <Link href={`/admin?page=${page - 1}`}>← Previous</Link> : <span />}
+          <span>
+            Page {page} of {userPage.meta.pageCount}
+          </span>
+          {page < userPage.meta.pageCount ? (
+            <Link href={`/admin?page=${page + 1}`}>Next →</Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      )}
       <div className="admin-content-grid">
         <section>
           <div className="admin-panel-heading">

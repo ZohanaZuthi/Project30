@@ -3,7 +3,6 @@ import type { Core } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
 
 import type { ApplicationUser } from '../../../utils/authorization';
-import { calculateProgress } from '../../../utils/progress';
 import { enrollmentKey } from '../../../utils/unique-key';
 
 const { NotFoundError } = errors;
@@ -22,6 +21,10 @@ type CourseDocument = {
   thumbnailUrl?: string | null;
   instructor?: { username?: string } | null;
   lessons?: Array<{ documentId: string; title: string; position: number }>;
+};
+
+type LessonProgressService = {
+  forStudent(studentId: number, courseDocumentId: string): Promise<unknown>;
 };
 
 function courseDto(course: CourseDocument) {
@@ -47,7 +50,10 @@ async function findPublishedCourse(strapi: Core.Strapi, documentId: string) {
     fields: ['title', 'slug', 'description', 'thumbnailUrl'],
     populate: {
       instructor: { fields: ['username'] },
-      lessons: { fields: ['documentId', 'title', 'position'], sort: ['position:asc'] },
+      lessons: {
+        fields: ['documentId', 'title', 'position'],
+        sort: ['position:asc', 'createdAt:asc'],
+      },
     },
   })) as CourseDocument | null;
 }
@@ -56,21 +62,10 @@ export default factories.createCoreService(
   'api::enrollment.enrollment',
   ({ strapi }) => {
     async function progressForCourse(studentId: number, courseDocumentId: string) {
-      const lessons = (await strapi.db.query('api::lesson.lesson').findMany({
-        where: { course: { documentId: courseDocumentId } },
-        select: ['documentId'],
-      })) as Array<{ documentId: string }>;
-      const lessonIds = lessons.map(({ documentId }) => documentId);
-      if (lessonIds.length === 0) return calculateProgress(0, 0);
-
-      const completed = await strapi.documents('api::lesson-progress.lesson-progress').count({
-        filters: {
-          student: { id: studentId },
-          lesson: { documentId: { $in: lessonIds } },
-        },
-      });
-
-      return calculateProgress(lessonIds.length, completed);
+      const progress = strapi.service(
+        'api::lesson-progress.lesson-progress'
+      ) as unknown as LessonProgressService;
+      return progress.forStudent(studentId, courseDocumentId);
     }
 
     return {
@@ -125,12 +120,18 @@ export default factories.createCoreService(
     },
 
     async findMine(user: ApplicationUser) {
-      const enrollments = (await strapi.documents('api::enrollment.enrollment').findMany({
-        filters: { student: { id: user.id } },
-        fields: ['enrolledAt'],
-        populate: { course: { fields: ['documentId'] } },
-        sort: ['enrolledAt:desc'],
-      })) as unknown as EnrollmentDocument[];
+      // Enrollment is not draft/published, while Course is. Query Engine keeps
+      // the stored relation visible regardless of which Course version the
+      // link table currently targets; we then reload the published document by
+      // its stable documentId before returning anything to the Student.
+      const enrollments = (await strapi.db
+        .query('api::enrollment.enrollment')
+        .findMany({
+          where: { student: { id: user.id } },
+          select: ['documentId', 'enrolledAt'],
+          populate: { course: { select: ['documentId'] } },
+          orderBy: { enrolledAt: 'desc' },
+        })) as unknown as EnrollmentDocument[];
 
       const results = await Promise.all(
         enrollments.map(async (enrollment) => {

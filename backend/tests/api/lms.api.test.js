@@ -8,10 +8,12 @@ let instructorToken;
 let otherInstructorToken;
 let managerToken;
 let adminToken;
+let adminUser;
 let studentToken;
 let student;
 let course;
 let lesson;
+let secondLesson;
 let quiz;
 let draftPost;
 
@@ -53,19 +55,17 @@ const auth = (token) => ({ Authorization: `Bearer ${token}` });
 beforeAll(async () => {
   const instance = await setupStrapi();
   app = instance.server.httpServer;
-  await Promise.all([
-    createUser("instructor_a", "instructor"),
-    createUser("instructor_b", "instructor"),
-    createUser("content_manager", "content_manager"),
-    createUser("admin_user", "admin"),
-  ]);
-  [instructorToken, otherInstructorToken, managerToken, adminToken] =
-    await Promise.all([
-      login("instructor_a"),
-      login("instructor_b"),
-      login("content_manager"),
-      login("admin_user"),
-    ]);
+  const seededUsers = [
+    await createUser("instructor_a", "instructor"),
+    await createUser("instructor_b", "instructor"),
+    await createUser("content_manager", "content_manager"),
+    await createUser("admin_user", "admin"),
+  ];
+  adminUser = seededUsers[3];
+  instructorToken = await login("instructor_a");
+  otherInstructorToken = await login("instructor_b");
+  managerToken = await login("content_manager");
+  adminToken = await login("admin_user");
 });
 
 afterAll(cleanupStrapi);
@@ -73,6 +73,7 @@ afterAll(cleanupStrapi);
 describe("LMS API integration", () => {
   test("health is public and management routes require authentication", async () => {
     await request(app).get("/api/health").expect(200);
+    await request(app).get("/api/lms/me").expect(401);
     await request(app).get("/api/lms/manage/courses").expect(403);
   });
 
@@ -145,7 +146,7 @@ describe("LMS API integration", () => {
       .expect(403);
   });
 
-  test("owner creates a lesson and enrollment is idempotent", async () => {
+  test("owner creates ordered lessons and enrollment is idempotent", async () => {
     const lessonResponse = await request(app)
       .post(`/api/lms/manage/courses/${course.documentId}/lessons`)
       .set(auth(instructorToken))
@@ -156,6 +157,23 @@ describe("LMS API integration", () => {
       })
       .expect(201);
     lesson = lessonResponse.body.data;
+
+    const secondLessonResponse = await request(app)
+      .post(`/api/lms/manage/courses/${course.documentId}/lessons`)
+      .set(auth(instructorToken))
+      .send({
+        title: "Data ownership",
+        content: "Keep student records scoped to the authenticated user.",
+        position: 2,
+      })
+      .expect(201);
+    secondLesson = secondLessonResponse.body.data;
+
+    await request(app)
+      .post(`/api/lms/manage/courses/${course.documentId}/lessons`)
+      .set(auth(instructorToken))
+      .send({ title: "Duplicate order", content: "Invalid.", position: 2 })
+      .expect(400);
 
     const first = await request(app)
       .post(`/api/lms/courses/${course.documentId}/enroll`)
@@ -168,6 +186,42 @@ describe("LMS API integration", () => {
     expect(first.body.data.alreadyEnrolled).toBe(false);
     expect(second.body.data.alreadyEnrolled).toBe(true);
     expect(second.body.data.documentId).toBe(first.body.data.documentId);
+
+    const myCourses = await request(app)
+      .get('/api/lms/my-courses')
+      .set(auth(studentToken))
+      .expect(200);
+    expect(myCourses.body.data).toHaveLength(1);
+    expect(myCourses.body.data[0].progress).toMatchObject({
+      totalLessons: 2,
+      completedLessons: 0,
+      percentage: 0,
+    });
+    expect(myCourses.body.data[0].progress.lessons).toEqual([
+      expect.objectContaining({
+        documentId: lesson.documentId,
+        completed: false,
+        locked: false,
+      }),
+      expect.objectContaining({
+        documentId: secondLesson.documentId,
+        completed: false,
+        locked: true,
+      }),
+    ]);
+  });
+
+  test("students cannot view or complete lessons out of sequence", async () => {
+    const viewPath = `/api/lms/my-courses/${course.documentId}/lessons/${secondLesson.documentId}`;
+    const completePath = `${viewPath}/complete`;
+    await request(app).get(viewPath).set(auth(studentToken)).expect(403);
+    await request(app).put(completePath).set(auth(studentToken)).expect(403);
+
+    await request(app)
+      .put(`/api/lms/manage/lessons/${lesson.documentId}`)
+      .set(auth(instructorToken))
+      .send({ position: 2 })
+      .expect(400);
   });
 
   test("completion persists and cannot be counted twice", async () => {
@@ -179,12 +233,55 @@ describe("LMS API integration", () => {
       .set(auth(studentToken))
       .expect(200);
     expect(first.body.data.progress).toMatchObject({
+      totalLessons: 2,
+      completedLessons: 1,
+      percentage: 50,
+    });
+    expect(second.body.data.alreadyCompleted).toBe(true);
+    expect(second.body.data.progress.completedLessons).toBe(1);
+  });
+
+  test("the next lesson unlocks and lesson deletion cleans its progress", async () => {
+    const lessonPath = `/api/lms/my-courses/${course.documentId}/lessons/${secondLesson.documentId}`;
+    await request(app).get(lessonPath).set(auth(studentToken)).expect(200);
+    const completion = await request(app)
+      .put(`${lessonPath}/complete`)
+      .set(auth(studentToken))
+      .expect(200);
+    expect(completion.body.data.progress).toMatchObject({
+      totalLessons: 2,
+      completedLessons: 2,
+      percentage: 100,
+    });
+    const progressRecord = await strapi.db
+      .query("api::lesson-progress.lesson-progress")
+      .findOne({
+        where: {
+          student: { id: student.id },
+          lesson: { documentId: secondLesson.documentId },
+        },
+        select: ["id"],
+      });
+    expect(progressRecord).toBeTruthy();
+
+    await request(app)
+      .delete(`/api/lms/manage/lessons/${secondLesson.documentId}`)
+      .set(auth(instructorToken))
+      .expect(200);
+    expect(
+      await strapi.db.query("api::lesson-progress.lesson-progress").findOne({
+        where: { id: progressRecord.id },
+      }),
+    ).toBeNull();
+    const progress = await request(app)
+      .get(`/api/lms/my-courses/${course.documentId}/progress`)
+      .set(auth(studentToken))
+      .expect(200);
+    expect(progress.body.data).toMatchObject({
       totalLessons: 1,
       completedLessons: 1,
       percentage: 100,
     });
-    expect(second.body.data.alreadyCompleted).toBe(true);
-    expect(second.body.data.progress.completedLessons).toBe(1);
   });
 
   test("quiz answers stay private and grading rejects forged scores", async () => {
@@ -299,5 +396,81 @@ describe("LMS API integration", () => {
       totalCourses: 1,
       totalEnrollments: 1,
     });
+    expect(stats.body.data.totalUsers).toBe(
+      await strapi.db.query("plugin::users-permissions.user").count({}),
+    );
+
+    const users = await request(app)
+      .get("/api/lms/admin/users?page=1&pageSize=2")
+      .set(auth(adminToken))
+      .expect(200);
+    expect(users.body.data).toHaveLength(2);
+    expect(users.body.meta).toMatchObject({ page: 1, pageSize: 2 });
+    expect(users.body.meta.total).toBe(stats.body.data.totalUsers);
+    await request(app)
+      .get("/api/lms/admin/users?page=1&pageSize=101")
+      .set(auth(adminToken))
+      .expect(400);
+
+    await request(app)
+      .delete(`/api/lms/admin/users/${student.documentId}`)
+      .set(auth(adminToken))
+      .expect(405);
+  });
+
+  test("the last active Admin is protected and unassigned users remain visible", async () => {
+    const demotePath = `/api/lms/admin/users/${adminUser.documentId}/role`;
+
+    await request(app)
+      .patch(demotePath)
+      .set(auth(adminToken))
+      .send({ role: null })
+      .expect(400);
+
+    const backupAdmin = await createUser("backup_admin", "admin");
+    await strapi.db.query("plugin::users-permissions.user").update({
+      where: { id: backupAdmin.id },
+      data: { blocked: true },
+    });
+
+    // A blocked Admin cannot receive control of the platform.
+    await request(app)
+      .patch(demotePath)
+      .set(auth(adminToken))
+      .send({ role: "student" })
+      .expect(400);
+
+    await strapi.db.query("plugin::users-permissions.user").update({
+      where: { id: backupAdmin.id },
+      data: { blocked: false },
+    });
+    const backupAdminToken = await login("backup_admin");
+
+    const demoted = await request(app)
+      .patch(demotePath)
+      .set(auth(adminToken))
+      .send({ role: null })
+      .expect(200);
+    expect(demoted.body.data.role).toBeNull();
+
+    const unassignedIdentity = await request(app)
+      .get("/api/lms/me")
+      .set(auth(adminToken))
+      .expect(200);
+    expect(unassignedIdentity.body.data.role).toBeNull();
+    await request(app)
+      .get("/api/lms/manage/courses")
+      .set(auth(adminToken))
+      .expect(401);
+
+    const stats = await request(app)
+      .get("/api/lms/admin/stats")
+      .set(auth(backupAdminToken))
+      .expect(200);
+    expect(stats.body.data.totalUsers).toBe(
+      await strapi.db.query("plugin::users-permissions.user").count({}),
+    );
+    expect(stats.body.data.usersByRole.unassigned).toBe(1);
+
   });
 });

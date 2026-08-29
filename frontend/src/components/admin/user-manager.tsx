@@ -17,9 +17,11 @@ const roles: Array<{ value: AppRole; label: string }> = [
 export function UserManager({
   initialUsers,
   actorDocumentId,
+  totalUsers,
 }: {
   initialUsers: AdminUser[];
   actorDocumentId?: string;
+  totalUsers: number;
 }) {
   const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
@@ -77,26 +79,6 @@ export function UserManager({
     }
   }
 
-  async function remove(user: AdminUser) {
-    if (!window.confirm(`Permanently delete ${user.username}?`)) return;
-    setPendingId(user.documentId);
-    setError("");
-    try {
-      await lmsMutation(`/api/lms/admin/users/${user.documentId}`, "DELETE");
-      setUsers((current) =>
-        current.filter((item) => item.documentId !== user.documentId),
-      );
-      router.refresh();
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "The user could not be deleted.",
-      );
-      setPendingId("");
-    }
-  }
-
   return (
     <section className="admin-users-panel">
       <div className="admin-panel-heading">
@@ -104,11 +86,11 @@ export function UserManager({
           <p className="eyebrow">Access control</p>
           <h2>Users and roles</h2>
           <p>
-            Changes are validated by Strapi, including last-admin and
-            self-protection rules.
+            Removing a role creates an unassigned account with no LMS workspace.
+            Blocking suspends authentication while preserving learning history.
           </p>
         </div>
-        <span>{users.length} accounts</span>
+        <span>{totalUsers} accounts</span>
       </div>
       {error && (
         <p className="form-error" role="alert">
@@ -196,14 +178,6 @@ export function UserManager({
                           : user.blocked
                             ? "Unblock"
                             : "Block"}
-                      </button>
-                      <button
-                        className="delete"
-                        disabled={pending || isSelf}
-                        onClick={() => remove(user)}
-                        type="button"
-                      >
-                        Delete
                       </button>
                     </div>
                   </td>

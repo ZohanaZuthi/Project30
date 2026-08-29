@@ -2,9 +2,10 @@ import { factories } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
 
 import { calculateProgress } from '../../../utils/progress';
+import { addLessonLocks } from '../../../utils/lesson-sequence';
 import { lessonProgressKey } from '../../../utils/unique-key';
 
-const { NotFoundError } = errors;
+const { ForbiddenError, NotFoundError } = errors;
 
 type LessonSummary = { documentId: string; title: string; position: number };
 type CompletedLesson = {
@@ -28,7 +29,7 @@ export default factories.createCoreService(
       return (await strapi.db.query('api::lesson.lesson').findMany({
         where: { course: { documentId: courseDocumentId } },
         select: ['documentId', 'title', 'position'],
-        orderBy: { position: 'asc' },
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       })) as unknown as LessonSummary[];
     }
 
@@ -52,10 +53,11 @@ export default factories.createCoreService(
         )
       );
       const summary = calculateProgress(lessons.length, completedIds.size);
+      const orderedLessons = addLessonLocks(lessons, completedIds);
 
       return {
         ...summary,
-        lessons: lessons.map((lesson) => ({
+        lessons: orderedLessons.map((lesson) => ({
           ...lesson,
           completed: completedIds.has(lesson.documentId),
           completedAt:
@@ -83,6 +85,12 @@ export default factories.createCoreService(
         if (!lesson) {
           throw new NotFoundError('Lesson not found in this course.');
         }
+
+        await this.assertLessonUnlocked(
+          studentId,
+          courseDocumentId,
+          lessonDocumentId
+        );
 
         const key = lessonProgressKey(studentId, lessonDocumentId);
         let record = (await strapi
@@ -124,6 +132,22 @@ export default factories.createCoreService(
 
       async forStudent(studentId: number, courseDocumentId: string) {
         return progressForStudent(studentId, courseDocumentId);
+      },
+
+      async assertLessonUnlocked(
+        studentId: number,
+        courseDocumentId: string,
+        lessonDocumentId: string
+      ) {
+        const progress = await progressForStudent(studentId, courseDocumentId);
+        const lesson = progress.lessons.find(
+          ({ documentId }) => documentId === lessonDocumentId
+        );
+        if (!lesson) throw new NotFoundError('Lesson not found in this course.');
+        if (lesson.locked) {
+          throw new ForbiddenError('Complete the previous lessons first.');
+        }
+        return lesson;
       },
 
       async forManagedCourse(courseDocumentId: string) {

@@ -31,7 +31,7 @@ export default async function CourseDetailPage({
   if (!course) notFound();
   const view = getCoursePresentation(course);
   const enrollment =
-    user?.role.type === APP_ROLES.STUDENT
+    user?.role?.type === APP_ROLES.STUDENT
       ? (await getMyCourses()).find(
           (item) => item.course.documentId === documentId,
         )
@@ -85,9 +85,11 @@ export default async function CourseDetailPage({
               <li>✓ Learn on any device</li>
             </ul>
             {enrollment ? (
-              <Link href={`/learn/${documentId}`}>Continue learning →</Link>
-            ) : user?.role.type === APP_ROLES.STUDENT ? (
+              <Link href={`/learn/${documentId}`}>শেখা চালিয়ে যান →</Link>
+            ) : user?.role?.type === APP_ROLES.STUDENT ? (
               <EnrollButton courseDocumentId={documentId} />
+            ) : user && !user.role ? (
+              <Link href="/no-role">Check your account status →</Link>
             ) : user ? (
               <Link href="/dashboard">Open your workspace →</Link>
             ) : (
@@ -97,7 +99,7 @@ export default async function CourseDetailPage({
                 Log in to enroll →
               </Link>
             )}
-            <p>No payment required for this demo.</p>
+            <p>এই demo course-এর জন্য কোনো payment প্রয়োজন নেই।</p>
           </div>
         </aside>
       </section>

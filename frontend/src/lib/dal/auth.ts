@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { ACCESS_COOKIE, type AppRole } from "../auth/constants";
 import { strapiFetch } from "../strapi";
-import type { CurrentUser } from "../types";
+import type { AssignedUser, CurrentUser } from "../types";
 
 const currentUserSchema = z.object({
   data: z.object({
@@ -15,7 +15,7 @@ const currentUserSchema = z.object({
     documentId: z.string().optional(),
     username: z.string(),
     email: z.string(),
-    role: z.object({ name: z.string(), type: z.string() }),
+    role: z.object({ name: z.string(), type: z.string() }).nullable(),
   }),
 });
 
@@ -47,8 +47,14 @@ export async function requireUser() {
   return user;
 }
 
-export async function requireRole(allowed: readonly AppRole[]) {
+export async function requireAssignedUser(): Promise<AssignedUser> {
   const user = await requireUser();
+  if (!user.role) redirect("/no-role");
+  return user as AssignedUser;
+}
+
+export async function requireRole(allowed: readonly AppRole[]) {
+  const user = await requireAssignedUser();
   if (!allowed.includes(user.role.type)) redirect("/forbidden");
   return user;
 }
