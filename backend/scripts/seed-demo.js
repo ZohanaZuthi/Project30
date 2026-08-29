@@ -18,7 +18,7 @@ const demoAccounts = [
     email: "manager@project30.local",
     role: "content_manager",
   },
-  { username: "admin_demo", email: "admin@project30.local", role: "admin" },
+  { username: "iamadmin", email: "iamadmin@gmail.com", role: "admin" },
 ];
 
 const demoBlog = {

@@ -55,6 +55,28 @@ restart, and `/api/health` readiness configuration.
 After the first deployment, open `<backend-domain>/admin` and create the Strapi
 CMS administrator. This account is separate from the LMS application Admin.
 
+### One-time review data seed
+
+A new Railway PostgreSQL service is empty; local users, courses, and progress
+are not copied during deployment. To create reproducible review content, add a
+temporary, strong `DEMO_USER_PASSWORD` variable to the Strapi service and set
+this one-time Railway pre-deploy command:
+
+```text
+node scripts/seed-demo.js
+```
+
+Deploy once and confirm that the deploy logs contain `Demo account ready`,
+`Demo course ready`, and `Demo blog ready`. Then remove the pre-deploy command
+and `DEMO_USER_PASSWORD` and deploy again. The stored user password remains a
+hash in PostgreSQL; the plaintext deployment variable is no longer retained.
+
+The seed is idempotent and creates four LMS role accounts, four published
+courses, seventeen general lessons, four quizzes, and one published blog post.
+It deliberately creates no enrollment, lesson-progress, or quiz-attempt rows.
+Those records must come from the real Student walkthrough so a newly registered
+Student starts at 0% and the displayed history is truthful.
+
 ## Vercel
 
 Import the same GitHub repository and configure:

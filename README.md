@@ -24,8 +24,8 @@ added after deployment:
 | Submission item | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| Vercel frontend URL | Deployment pending |
-| Railway backend URL | Deployment pending |
+| Vercel frontend URL | `https://project30-two.vercel.app` |
+| Railway backend URL | `https://project30-production.up.railway.app` |
 | Video walkthrough URL | Recording pending |
 
 Do not submit until all four links are openable in a signed-out/incognito
@@ -557,9 +557,11 @@ This creates:
 | `student@project30.local` | Student |
 | `instructor@project30.local` | Instructor |
 | `manager@project30.local` | Content Manager |
-| `admin@project30.local` | Admin |
+| `iamadmin@gmail.com` | Admin |
 
-Never configure `DEMO_USER_PASSWORD` in Railway or commit a real password.
+Never commit a real password. For a controlled review deployment,
+`DEMO_USER_PASSWORD` may be added to Railway only for the one-time seed deploy;
+remove both the variable and the pre-deploy command immediately afterward.
 
 ### 3. Start both applications
 
