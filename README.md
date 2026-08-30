@@ -17,19 +17,42 @@ No NATS, Kafka, RabbitMQ, or other message broker is required.
 
 ## Current submission status
 
-The application code, local workflow, tests, Railway configuration, and
-deployment guide are complete. The final hosted links and walkthrough must be
-added after deployment:
+The application, production database, and both hosted services are live. The
+deployment was smoke-tested on 29 August 2026. Only the candidate's video
+walkthrough remains to be recorded and added to the submission:
 
 | Submission item | Status |
 | --- | --- |
-| Public GitHub repository | Available |
-| Vercel frontend URL | `https://project30-two.vercel.app` |
-| Railway backend URL | `https://project30-production.up.railway.app` |
+| Public GitHub repository | <https://github.com/ZohanaZuthi/Project30> |
+| Vercel frontend URL | <https://project30-two.vercel.app> |
+| Railway backend URL | <https://project30-production.up.railway.app> |
 | Video walkthrough URL | Recording pending |
 
 Do not submit until all four links are openable in a signed-out/incognito
 browser.
+
+### Live production content
+
+The Railway PostgreSQL database currently contains a reviewer-ready content
+library:
+
+| Content | Live count | Notes |
+| --- | ---: | --- |
+| Published courses | 4 | Python, Digital Marketing, UI/UX, and Next.js |
+| General lessons | 17 | Ordered text/resource/video curriculum steps |
+| MCQ quizzes | 4 | One server-graded quiz in each course |
+| Published blog posts | 1 | Backend-authorization article |
+
+This content is persistent PostgreSQL data, not hard-coded frontend data. No
+fake enrollment, lesson completion, percentage, or quiz attempt was inserted.
+Those records are created only when a reviewer uses the Student flow, so the
+dashboard starts from truthful account-specific state.
+
+The one-time production seed was idempotent. After it completed,
+`DEMO_USER_PASSWORD` and the Railway pre-deploy seed command were removed. A
+normal redeploy was then completed successfully, proving that the application
+starts from the persisted database without reseeding or keeping the temporary
+plaintext seed secret in its runtime environment.
 
 ## Reviewer access
 
@@ -233,6 +256,21 @@ blocked. Blocked Admins do not count as active backup administrators.
 | `http://localhost:1337/admin` | Strapi CMS administration |
 | `http://localhost:1337/api/health` | Backend readiness |
 | `http://localhost:3000/api/health` | Combined frontend-to-backend health |
+
+Production equivalents:
+
+| URL | Purpose |
+| --- | --- |
+| <https://project30-two.vercel.app> | Public Next.js application |
+| <https://project30-two.vercel.app/courses> | Published course catalog |
+| <https://project30-two.vercel.app/blog> | Published blog portal |
+| <https://project30-two.vercel.app/api/health> | Frontend-to-backend health check |
+| <https://project30-production.up.railway.app/admin> | Separate Strapi CMS Admin portal |
+| <https://project30-production.up.railway.app/api/health> | Railway Strapi readiness check |
+
+The Railway project may be labelled `projecr30_lms` in the hosting dashboard;
+that display-name typo does not affect either production domain or the running
+services.
 
 ## Roles and permissions
 
@@ -694,6 +732,14 @@ Verify in a signed-out/incognito browser:
 7. Admin can change a user's role and see exact statistics.
 8. Draft course/blog remains absent from public APIs.
 9. Railway and frontend health endpoints return HTTP 200.
+
+Verified deployment baseline on 29 August 2026:
+
+- Railway deployment status: active and successful;
+- backend health endpoint: HTTP 200;
+- public course API: HTTP 200 with four published courses;
+- public blog API: HTTP 200 with one published post; and
+- Vercel course page: HTTP 200 and rendered from the Railway API.
 
 ## Security decisions
 
